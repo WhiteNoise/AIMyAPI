@@ -1,0 +1,39 @@
+{
+  "name": "aimyapi",
+  "version": "0.1.0",
+  "description": "AI My API! Use LLMs to create small programs that safely* run and make calls against your API.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "example1": "ts-node ./example/example1.ts",
+    "example2": "ts-node ./example/example2.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WhiteNoise/aimyapi.git"
+  },
+  "keywords": [
+    "AI",
+    "LLM",
+    "openai"
+  ],
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "openai": "^3.2.1",
+    "quickjs-emscripten": "^0.22.0",
+    "typescript": "^5.0.3"
+  },
+  "author": "David Wallin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/WhiteNoise/aimyapi/issues"
+  },
+  "homepage": "https://github.com/WhiteNoise/aimyapi#readme",
+  "devDependencies": {
+    "@types/node": "^18.16.2",
+    "ts-node": "^10.9.1"
+  }
+}
