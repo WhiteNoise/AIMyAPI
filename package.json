@@ -9,7 +9,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "example1": "ts-node ./example/example1.ts",
-    "example2": "ts-node ./example/example2.ts"
+    "example2": "ts-node ./example/example2.ts",
+    "example3": "ts-node ./example/example3.ts"
   },
   "repository": {
     "type": "git",

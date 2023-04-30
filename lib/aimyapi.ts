@@ -90,16 +90,8 @@ export const generateCode = async function(queryText:string, userChatHistory:Cha
             return '';
 
         generatedCode = response.substring(codeStart + 3, codeEnd).replace('typescript', '');
-
-        // strip ``` markdown (usually at the end of the completion)
-        //generatedCode = results.data.choices[0].message.content.replace(/```.*/g, '');
-        //task.data.choices[0].text.replace(/```.*/g, '')
-
-        // wrap the generated code with the necessary imports and async wrapper since it's running in the top level.
-        // Note: The imports are mostly only interfaces and should be removed when typescript compiles it.
-        // Anything else should have been created as a global in the sandbox.ts
-        const taskHeader = `// Query=${queryText}\nimport * as ApiDefs from "${apiPath}";\n\n(async() {\n    try {`;
-
+       
+        generatedCode = `// Query=${queryText}\n` + generatedCode.replace("./api.ts", apiPath);
         return generatedCode;
     } catch(err) {
         console.error(err);

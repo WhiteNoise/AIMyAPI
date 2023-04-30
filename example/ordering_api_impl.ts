@@ -12,6 +12,7 @@ import {
 export class OrderingAPI implements OrderingAPIInterface {
 	private _order: MenuItemBase[] = [];
 	private _lastOrderIdNumber: number = 0;
+    public _isCompleted:boolean = false;
 
 	private _history: ChatCompletionRequestMessage[] = [];
 
@@ -155,6 +156,8 @@ export class OrderingAPI implements OrderingAPIInterface {
 		this._lastOrderIdNumber = 0;
         // clear history
         this._history = []
+
+        this._isCompleted = true;
 	}
 
 	displayItem(item: MenuItemBase) {
@@ -186,4 +189,6 @@ export class OrderingAPI implements OrderingAPIInterface {
 	_getHistory(): ChatCompletionRequestMessage[] {
 		return this._history;
 	}
+
+
 }

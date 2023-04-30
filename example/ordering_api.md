@@ -29,6 +29,8 @@ import * as ApiDefs from './api.ts'
     try {
         orderingApi.addItemToOrder("Hamburger", [], []);
         orderingApi.respondToUser("Ok, I added a Hamburger. What else would you like?");
+    } catch(e) {
+        console.error(e);
     }
 })();
 ```
@@ -58,8 +60,9 @@ import * as ApiDefs from './api.ts'
     try {
         orderingApi.addItemToOrder("Hamburger", [], ["cheese"]);
         orderingApi.respondToUser("Ok, I added a Hamburger. What else would you like?");
-    } catch(err) {
+    } catch(e) {
         orderingApi.respondToUser("Apologies, something went wrong with that request.");
+        console.error(e);
     }
 })();
 ```
@@ -81,8 +84,23 @@ import * as ApiDefs from './api.ts'
         } else {
             orderingApi.respondToUser("Hmm, I can't find that item.");
         }
-    } catch(err) {
+    } catch(e) {
         orderingApi.respondToUser("Apologies, something went wrong with that request.");
+        console.error(e);
+    }
+})();
+```
+
+user: I want an elephant.
+
+assistant:
+```
+import * as ApiDefs from './api.ts'
+(async() {
+    try {
+        orderingApi.respondToUser("I'm sorry, but that isn't on our menu.");
+    } catch(e) {
+        console.error(e);
     }
 })();
 ```
