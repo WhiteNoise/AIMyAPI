@@ -98,17 +98,17 @@ Currently there is a lot of hype around "agents" - while agents are extremely co
 
 **Advantages of AIMyAPI over the Agent (haystack) approach:**
 
-* Data from your API can be kept private as long as you don't add it to the chat history or the prompt. AIMyAPI is writing the operations to manipulate the data but doesn't need to see the data itself to do that.
-* Writing code means that AIMyAPI can do math and algorithms out of the box - something LLMs struggle at. Agents can do this using tools, but that means you need to do the work to implement and explain these tools
-* On that note, OpenAI's LLMs have extensive training on coding and know a wealth of algorithms. As long as your API is well documented and not too complex, I've seen a high success rate on the code it writes.
-* Agents typically only do one thing at a time and require several OpenAI API calls to do a single loop. AIMyAPI can write an entire program that does several things in one shot.
+- Data from your API can be kept private as long as you don't add it to the chat history or the prompt. AIMyAPI is writing the operations to manipulate the data but doesn't need to see the data itself to do that.
+- Writing code means that AIMyAPI can do math and algorithms out of the box - something LLMs struggle at. Agents can do this using tools, but that means you need to do the work to implement and explain these tools
+- On that note, OpenAI's LLMs have extensive training on coding and know a wealth of algorithms. As long as your API is well documented and not too complex, I've seen a high success rate on the code it writes.
+- Agents typically only do one thing at a time and require several OpenAI API calls to do a single loop. AIMyAPI can write an entire program that does several things in one shot.
 
 
 **Disadvantages:**
 
-* This is not an iterative approach: AIMyAPI must have a full understanding of the problem and the API in order write code against it. 
-* It is not currently set up to be able to troubleshoot or fix it's own code (this may be possible)
-* Limits on the context for OpenAI's LLMs mean you can't have a super big API (maybe GPT4 will make this a non-issue). 
+- This is not an iterative approach: AIMyAPI must have a full understanding of the problem and the API in order write code against it. 
+- It is not currently set up to be able to troubleshoot or fix it's own code (this may be possible)
+- Limits on the context for OpenAI's LLMs mean you can't have a super big API (maybe GPT4 will make this a non-issue). 
 
 ## installation
 
@@ -171,15 +171,15 @@ In example2, note that responses to the user and relevant information is also ad
 
 ## Safety notes:
 
-* If the user is giving sensitive information in a query, that information isn't private. Refer to the OpenAI policies and plan accordingly.
-* The LLM will do stupid things with your API. Idiot proof your functions with error checking. Bonus points for providing feedback to the LLM via the chat history so it can fix it's mistakes.
-* Even though we are running the code in sandbox, you should still treat anything coming back from the LLM as untrusted code.
-* You should never give the LLM access to anything mission critical through your API such as live production data or services. 
-* Give as few permissions as is necessary - read only access would be preferred. 
-* Users can trick the LLM to do things that you may not want or intend. Again, access controls are critical. You shouldn't let users access anything they wouldn't normally be able to access via your API.
-* Any 'dangerous' operations should involve some kind of human oversight and approval.
-* A way to audit and rollback anything the LLM does would be wise. The LLM can misunderstand requests due to false assumptions or incomplete information (or trickery). If you allow it to modify your data it could mess things up.
-* By using this library you acknowledge that you take full responsibility for anything that happens as a result of it's use. We cannot gaurantee what will happen based on your instructions to the LLM or how the LLM interprets them etc.
+- If the user is giving sensitive information in a query, that information isn't private. Refer to the OpenAI policies and plan accordingly.
+- The LLM will do stupid things with your API. You should idiot proof your functions, make sure you sanity check any inputs, etc.
+- Even though we are running the code in sandbox, you should still treat anything coming back from the LLM as untrusted code.
+- You should never give the LLM access to anything mission critical through your API such as live production data or services. 
+- Give as few permissions as is necessary - read only access would be preferred. 
+- Users can trick the LLM to do things that you may not want or intend. Again, access controls are critical. You shouldn't let users access anything they wouldn't normally be able to access via your API.
+- Any 'dangerous' operations should involve some kind of human oversight and approval.
+- A way to audit and rollback anything the LLM does would be wise. The LLM can misunderstand requests due to false assumptions or incomplete information (or trickery). If you allow it to modify your data it could mess things up.
+- By using this library you acknowledge that you take full responsibility for anything that happens as a result of it's use. We cannot gaurantee what will happen based on your instructions to the LLM or how the LLM interprets them etc.
 
 ## Thoughts:
 
@@ -188,7 +188,4 @@ Could fine tuning on our API and examples allow us to make the prompt smaller? W
 ## TODO
 
 Build process so that this can be used as a module
-
-
-
-
+Interactive ordering example
