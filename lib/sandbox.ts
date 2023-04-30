@@ -3,6 +3,7 @@ import "quickjs-emscripten";
 import * as ts from "typescript";
 import {
   injectTimingFunctions,
+  wrap,
   wrapObject,
   wrapObjectWhitelist,
 } from "./sandbox-wrappers";
@@ -39,7 +40,7 @@ export interface Globals {
 
 // Is there some way we can treat the API and globals the same?
 // We could just provide an object for all globals (including the API) and also have the whitelist as a parameter..
-export default async function createSandbox(QuickJS, requireLookup:any = {}, globals: Globals = {}) {
+export default async function createSandbox(QuickJS, requireLookup:any = {}, globals: Globals = {}, debug:boolean = false) {
   const vm = QuickJS.newContext();
 
   let errorState = false;
@@ -97,7 +98,7 @@ export default async function createSandbox(QuickJS, requireLookup:any = {}, glo
           beginAsyncProcess,
           endAsyncProcess
         )
-      : wrapObject(vm, globalOption.value, beginAsyncProcess, endAsyncProcess);
+      : wrap(vm, globalOption.value, globalOption, beginAsyncProcess, endAsyncProcess);
 
     vm.setProp(vm.global, globalNames[i], globalObj);
     globalObj.dispose();
@@ -142,7 +143,8 @@ export default async function createSandbox(QuickJS, requireLookup:any = {}, glo
           return false;
         }
 
-        //console.log(compiled);
+        if(debug)
+          console.log(compiled);
 
         errorState = false;
         const result = vm.evalCode(compiled);

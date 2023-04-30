@@ -8,13 +8,14 @@ The ultimate low-code solution
 ## TODO
 
 Build process
-Better example with more complex data..
+
+Switch back to gpt3-turbo
+
+Where are timing delays coming from?
+
+Ability to revise a task by chatting?
 
 
-https://jokeapi.dev/
-
-https://catfact.ninja/
 
 
-// https://github.com/justjake/quickjs-emscripten
-// https://www.npmjs.com/package/quickjs-emscripten-sync
+https://github.com/justjake/quickjs-emscripten

@@ -169,6 +169,13 @@ export interface OrderingAPIInterface {
     delay(milliseconds: number): Promise<void>;
     // waits for the specified number of milliseconds before resolving the promise.
 
+    displayItem(item: MenuItemBase): void;
+    // Displays the specified item to the user.
+
+    displayOrder(): void;
+    // Displays the current order to the user.
+    
+
 };
 
 // Global object you will use for accessing the APIInterface

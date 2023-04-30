@@ -86,7 +86,7 @@ export interface AIMyAPIOptions {
 };
 
 export interface CreateWithAPIExports {
-    processRequest: (userQuery:string) => Promise<string>;
+    processRequest: (userQuery:string, context?: object) => Promise<string>;
     runCode: (task:string) => Promise<void>;
 }
 
@@ -116,20 +116,26 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
                     console.log("Creating quick.js");
                 QuickJS = await getQuickJS();
             }
+
+            let apiGlobals = {}
+
+            for(const key in options.apiGlobals) {
+                apiGlobals[key] = {
+                    value: options.apiGlobals[key],
+                }
+            }
       
             // Create sandbox           
             // NOTE: not sure why I have to replace the backslash here
             const {vm, runTask, isAsyncProcessRunning} = await createSandbox(QuickJS, {
                 [apiDefFilePath.replaceAll("\\", "")]: apiExports,
             }, { 
-                ApiDefs: {
-                    value: options.apiGlobals
-                },
+                ...apiGlobals,
                 [apiGlobalName]: {
                     value: apiObject,
                     whitelist
                 }
-            });
+            }, options.debug);
 
             try {
                 const res = await runTask(generatedCode);
@@ -165,12 +171,17 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
             }
         
             // Generate Code
-            const generatedCode = await generateTask(userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? JSON.stringify(currentContext, null, 2) : "" ), apiDefFilePath);
+            console.time("Generate Task")
+            const generatedCode = await generateTask(userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : "" ), apiDefFilePath);
+            console.timeEnd("Generate Task")
         
             if(debug) {
                 console.log("Generated Code:", generatedCode);
             }
+
+            console.time("Run Code")
             await this.runCode(generatedCode);
+            console.timeEnd("Run Code")
 
             return generatedCode;
         }

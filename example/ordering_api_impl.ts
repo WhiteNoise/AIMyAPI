@@ -45,10 +45,15 @@ export class OrderingAPI implements OrderingAPIInterface {
         };
 
         this._order.push(newItem);
+
+        console.log(`Added item ${newItem.orderId}`)
+        this.displayItem(newItem);
     }
 
     removeItemFromOrder(itemOrderId: string) {
         this._order = this._order.filter(item => item.orderId !== itemOrderId);
+
+        console.log(`Removed item ${itemOrderId}`)
     }
 
     modifyItemInOrder(itemOrderId: string, customizations:Customization[], toppings: string[]) {
@@ -60,12 +65,14 @@ export class OrderingAPI implements OrderingAPIInterface {
         } else {
             throw new Error(`Item with id "${itemOrderId}" not found in order`);
         }
+
+        console.log(`Modified item ${itemOrderId}`)
     }
 
     getOrderTotal() {
         const total = this._order.reduce((total, item) => {
             const customizationTotal = item.customizations.reduce((total, customization) => {
-                return total + customization.priceAdjustment;
+                return total + customization?.priceAdjustment || 0;
             }, 0);
             return total + item.price + customizationTotal;
          }, 0)
@@ -74,22 +81,29 @@ export class OrderingAPI implements OrderingAPIInterface {
     }
 
     completeOrder(): void {
-        console.log(`Order complete. Total: $${this.getOrderTotal()}`);
-        console.log(`Order You ordered:`);
-        this._order.forEach(item => {
-            console.log(`\t${item.name}`);
-            item.toppings.forEach(topping => {
-                console.log(`\t\t${topping}`);
-            });
-            item.customizations.forEach(customization => {
-                console.log(`\t\t${customization.name}`);
-            });
+        
+        this.displayOrder();
+        console.log("Order complete!");
 
+        this._lastOrderIdNumber = 0;
+    }
 
+    displayItem(item: MenuItemBase) {
+        console.log(`\t${item.orderId || ''} ${item.name}...\t\t$${item.price}`);
+        item.toppings.forEach(topping => {
+            console.log(`\t\t${topping}`);
+        });
+        item.customizations.forEach(customization => {
+            console.log(`\t\t${customization.name}...\t$${customization.priceAdjustment}`);
         });
     }
 
+    displayOrder() {
+        console.log("----\n\nDisplaying order:\n\n");
+        this._order.forEach(item => this.displayItem(item));
+        console.log(`--\tTotal:\t\t$${this.getOrderTotal()}`);
 
+    }
 
 
 
