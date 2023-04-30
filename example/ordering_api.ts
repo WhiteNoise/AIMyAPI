@@ -43,7 +43,7 @@ export const Menu: MenuItemBase[] = [
                 "priceAdjustment": 2.99
             },
             {
-                "name": "Extra Large",
+                "name": "Large",
                 "priceAdjustment": 3.99
             }
         ],
@@ -144,17 +144,27 @@ export const Menu: MenuItemBase[] = [
 export interface OrderingAPIInterface {
 
     sendEmail(to: string, subject: string, body: string): Promise<void>;
+    // Sends an email to the specified address with the specified subject and body.
 
-    getOrder(): MenuItemBase[];
+    getCurrentOrder(): MenuItemBase[];
+    // Gets the list of items that the user has added to the order so far.
 
-    addItemToOrder(itemName, customizations:Customization[], toppings: string[]): void;
+    getItemInOrder(itemOrderId: string): MenuItemBase | undefined;
+    // Gets the item with the specified id from the order.
+    // If the item is not in the order, returns undefined.
+
+    getCustomizationByName(itemName:string, name: string): Customization | undefined;
+    // Gets the customization with the specified name for the specified item.
+    // If the item does not have a customization with the specified name, returns undefined.
+
+    addItemToOrder(itemName:string, customizationNames: string[], toppings: string[]): void;
     // Adds the specified item to the order.
     // when adding an item, you should always create a new object that matches the existing menu item structure. Only include the toppings that the user has specified unless they come by default with the item.
 
     removeItemFromOrder(itemOrderId: string): void;
     // Removes the item with the specified id from the order.
 
-    modifyItemInOrder(itemOrderId: string, customizations:Customization[], toppings: string[]): void;
+    modifyItemInOrder(itemOrderId: string, customizationNames: string[], toppings: string[]): void;
     // Replace the item in the order with the specified item.
 
     getOrderTotal(): number;

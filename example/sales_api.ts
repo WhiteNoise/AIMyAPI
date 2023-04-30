@@ -16,7 +16,7 @@ export interface APIInterface {
     // Returns an array of sales data.
 
     print(text: string): void;
-    // Prints the specified text to the console.
+    // Prints the specified text to the user.
 
     delay(milliseconds: number): Promise<void>;
     // waits for the specified number of milliseconds before resolving the promise.

@@ -143,8 +143,9 @@ export default async function createSandbox(QuickJS, requireLookup:any = {}, glo
           return false;
         }
 
-        if(debug)
-          console.log(compiled);
+        // View compiled typescript code for debugging
+        // if(debug)
+        //   console.log(compiled);
 
         errorState = false;
         const result = vm.evalCode(compiled);

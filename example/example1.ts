@@ -5,15 +5,17 @@ import * as APIExports from "./sales_api";
 import path from "path";
 
 
-// FIXME: do fast food ordering example..
+// Simpler example using no support for chat history; 
 
 (async () => {
     const api = new API();
 
     const aimyapi = await AIMyAPI.createWithAPI({
         apiObject: api,
+        apiGlobalName: "api", // Should match whatever you declared as your global in your api.
         apiExports: APIExports,
         apiDefFilePath: path.join(__dirname, "./sales_api.ts"),
+        apiDocsPath: path.join(__dirname, "./sales_api.md"),
         debug: false,
     })
     

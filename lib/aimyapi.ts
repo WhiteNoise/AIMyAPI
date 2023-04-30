@@ -1,5 +1,5 @@
 require('dotenv').config()
-import { Configuration, OpenAIApi } from "openai";
+import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
 import fs from 'fs';
 import path from 'path';
 
@@ -36,7 +36,7 @@ export function createBasePrompt(apiFilePath:string, documentationPath: string):
 }
 
 // userChatHistory is not currently used but could be in the future.
-export const generateTask = async function(queryText:string, userChatHistory:any[], createTaskPrompt:string, apiPath:string): Promise<string> {
+export const generateCode = async function(queryText:string, userChatHistory:ChatCompletionRequestMessage[], createTaskPrompt:string, apiPath:string, debug:boolean = false): Promise<string> {
     if(!queryText)
         return;
 
@@ -45,27 +45,62 @@ export const generateTask = async function(queryText:string, userChatHistory:any
 
     // TODO: I should switch this back to gpt3.5 turbo since it's cheaper
     try {
-        const task = await openai.createCompletion(
-            {
-            model: "text-davinci-003",
-            prompt,
+        // const task = await openai.createCompletion(
+        //     {
+        //     model: "text-davinci-003",
+        //     prompt,
+        //     temperature: 0.1,
+        //     max_tokens: 1100,
+        //     }
+        // );
+
+        const results = await openai.createChatCompletion({
+            model: "gpt-3.5-turbo",
+            messages: [
+                {
+                    role: "system",
+                    content: prompt,
+                },
+                ...userChatHistory,
+                {
+                    role: "user",
+                    content: `${queryText}`,
+                    name: "user"
+                }
+            ],
             temperature: 0.1,
-            max_tokens: 1100,
+            max_tokens: 800,
             }
         );
 
-        // uncomment to see token usage
-        //console.log(task.data.usage);
+
+        if(debug)
+            console.log(results.data.usage);
+        
+        const response = results.data.choices[0].message.content;
+
+        if(debug)
+            console.log(response);
+            
+        // Return only the code between ``` and ``` (usually at the end of the completion)
+        const codeStart = response.indexOf('```');
+        const codeEnd = response.lastIndexOf('```');
+
+        if(codeStart === -1 || codeEnd === -1 || codeStart === codeEnd)
+            return '';
+
+        generatedCode = response.substring(codeStart + 3, codeEnd).replace('typescript', '');
 
         // strip ``` markdown (usually at the end of the completion)
-        generatedCode = task.data.choices[0].text.replace(/```.*/g, '')
+        //generatedCode = results.data.choices[0].message.content.replace(/```.*/g, '');
+        //task.data.choices[0].text.replace(/```.*/g, '')
 
         // wrap the generated code with the necessary imports and async wrapper since it's running in the top level.
         // Note: The imports are mostly only interfaces and should be removed when typescript compiles it.
         // Anything else should have been created as a global in the sandbox.ts
         const taskHeader = `// Query=${queryText}\nimport * as ApiDefs from "${apiPath}";\n\n(async() {\n    try {`;
 
-        return taskHeader + generatedCode;
+        return generatedCode;
     } catch(err) {
         console.error(err);
         return '';
@@ -86,8 +121,12 @@ export interface AIMyAPIOptions {
 };
 
 export interface CreateWithAPIExports {
-    processRequest: (userQuery:string, context?: object) => Promise<string>;
+    // see xample 2
+    generateCode: (queryText:string, userChatHistory:ChatCompletionRequestMessage[]) => Promise<string>;
     runCode: (task:string) => Promise<void>;
+    // run a single request with no history
+    processRequest: (userQuery:string, context?: object) => Promise<string>;
+    
 }
 
 async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExports> {
@@ -109,6 +148,12 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
     const createTaskPrompt = createBasePrompt( apiDefFilePath, apiDocsPath);
 
     return {
+        generateCode: async function(queryText:string, userChatHistory:ChatCompletionRequestMessage[], currentContext:any = undefined) {
+            if(!queryText)
+                return '';
+
+            return await generateCode(queryText, userChatHistory, createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : ""), apiDefFilePath, debug);
+        },
         runCode: async function(generatedCode:string) {
             if(!QuickJS) {
                 // Create QuickJS
@@ -172,7 +217,7 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
         
             // Generate Code
             console.time("Generate Task")
-            const generatedCode = await generateTask(userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : "" ), apiDefFilePath);
+            const generatedCode = await generateCode(userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : "" ), apiDefFilePath);
             console.timeEnd("Generate Task")
         
             if(debug) {
@@ -203,7 +248,7 @@ const aimyapi:AIMyAPIExports = {
 
     // functions for customized usage
     createBasePrompt,   
-    generateTask,
+    generateTask: generateCode,
     createSandbox,
 }
 
