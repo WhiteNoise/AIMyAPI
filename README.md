@@ -99,9 +99,9 @@ Currently there is a lot of hype around "agents" - while agents are extremely co
 
 **Advantages of AIMyAPI over the Agent (haystack) approach:**
 
-- Data from your API can be kept private as long as you don't add it to the chat history or the prompt. AIMyAPI is writing the operations to manipulate the data but doesn't need to see the data itself to do that.
-- Writing code means that AIMyAPI can do math and algorithms out of the box - something LLMs struggle at. Agents can do this using tools, but that means you need to do the work to implement and explain these tools
-- On that note, OpenAI's LLMs have extensive training on coding and know a wealth of algorithms. As long as your API is well documented and not too complex, I've seen a high success rate on the code it writes.
+- Open AI's LLMs today are already really good at writing code, but not necessarily trained on the 'haystack' approach.
+- Data from your API can be kept private as long as you don't add it to the chat history or the prompt. The LLM is writing the operations to manipulate the data but doesn't need to see the data itself to do that.
+- Writing code means that AIMyAPI can do math and algorithms out of the box - something LLMs by themselves struggle at. For instance, asking it to do a simple calculation will result in it writing code to do the calculation. Agents can do this using 'tools', but that means you need to do the work to implement and explain these tools wheras they come built-in in a programming language.
 - Agents typically only do one thing at a time and require several OpenAI API calls to do a single loop. AIMyAPI can write an entire program that does several things in one shot.
 
 
@@ -185,6 +185,7 @@ In example2, note that responses to the user and relevant information is also ad
 ## Thoughts:
 
 Could fine tuning on our API and examples allow us to make the prompt smaller? We can only fine tune on the base models though, so we can't use the cheaper gpt3.5-turbo model.
+Could a smaller / more efficient LLM focused on coding tasks work for this usecase?
 
 ## TODO
 
