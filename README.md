@@ -1,5 +1,6 @@
-# aimyapi
-AI My API
+# AI My API
+
+Note: Still working on making this available as a library.
 
 Build AI assistants that use your API's and respond to natural language queries by writing small programs that are executed in a [QuickJS](https://github.com/justjake/quickjs-emscripten) sandbox.
 AIMyAPI writes the glue between your various API functions unlocking new functionality without having to write any code. With the right building blocks, AIMyAPI can even invent new functionality you didn't originally plan for - 
