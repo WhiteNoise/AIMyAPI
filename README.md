@@ -130,10 +130,16 @@ A simple api example where the LLM allows you to ask questions and compute thing
 npm run example1
 ```
 
-A more complex ordering example which incorporates chat history
+A more complex food ordering example which incorporates chat history
 
 ```
 npm run example2
+```
+
+Interactive ordering example (same api as example2)
+
+```
+npm run example3
 ```
 
 ## Providing examples
