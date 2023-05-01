@@ -4,9 +4,16 @@ Build AI assistants that use your API's and respond to natural language queries 
 AIMyAPI writes the glue between your various API functions unlocking new functionality without having to write any code. With the right building blocks, AIMyAPI can even invent new functionality you didn't originally plan for - 
 for example, being able to sort or filter your data in new ways, email or text yourself results, or combine the results of different operations and API's.
 
-Uses the OpenAI API and requires an API key.
+Uses the OpenAI API and requires an API key. 
 
 ## Quickstart
+
+Install the package
+
+```
+npm i aimyapi --save
+```
+
 Simply define your strongly-typed typescript API:
 
 `sales_api.ts`
@@ -20,16 +27,11 @@ export interface SalesData {
 }
 
 export interface APIInterface {
-    sendEmail(to: string, subject: string, body: string): Promise<void>;
-
     getSalesData(): SalesData[];
     // Returns an array of sales data.
 
     print(text: string): void;
     // Prints the specified text to the user.
-
-    delay(milliseconds: number): Promise<void>;
-    // waits for the specified number of milliseconds before resolving the promise.
 };
 
 // Global object you will use for accessing the APIInterface
@@ -43,13 +45,15 @@ Implement it:
 ```
 export class API implements APIInterface {
 
-    sendEmail(to: string, subject: string, body: string): Promise<void> {
+    getSalesData() {
     ...
 ```
 
 Instantiate your api and AIMyAPI. AIMyAPI will wrap your API so that it can be called from within the QuickJS sandbox.
 
 ```
+import AIMyAPI from "aimyapi"
+
 const api = new API();
 
 const aimyapi = await AIMyAPI.createWithAPI({
@@ -91,7 +95,7 @@ import * as ApiDefs from './api.ts'
 
 This example does not take advantage of the chat history and treats every request as a fresh chat. See `example2` for a more complex example that uses the chat history.
 
-APIs should be kept simple and understandable. If you have a complicated API you may want to write a facade for it.
+APIs should be kept simple and understandable. If you have a complicated API you may want to write a simpler facade for it.
 
 ## Advantages and disadvantages of generating code
 
@@ -107,16 +111,19 @@ Currently there is a lot of hype around "agents" - while agents are extremely co
 
 **Disadvantages:**
 
-- This is not an iterative approach: AIMyAPI must have a full understanding of the problem and the API in order write code against it. 
-- It is not currently set up to be able to troubleshoot or fix it's own code (this may be possible)
-- Limits on the context for OpenAI's LLMs mean you can't have a super big API (maybe GPT4 will make this a non-issue). 
+- This is not an iterative approach: AIMyAPI must have a full understanding of the problem and the API in order write code against it. Haystack may be better for problems with unknowns.
+- The LLM can misunderstand your intentions, the api or write incorrect code or reference things that don't exist in the sandbox.
+- It is not currently set up to be able to troubleshoot or fix it's own code (this may be possible though)
+- Limits on the context for OpenAI's LLMs mean you can't have a super big API or lots of docs/examples (maybe GPT4's larger context will make this a non-issue - I don't have access yet). 
+- Due to it's training, gpt3.5-turbo tends to want to reply with commentary sometimes, not just code. But examples mostly fix this issue. The `davinci-003` model with the completion api can be prompted to just reply with code, but it's 10x more expensive.
 
-## installation
+## Installation
 
 ```
 npm install
 ```
 
+**Important:**
 create a .env file in the root of your project
 add your open ai key:
 ```
