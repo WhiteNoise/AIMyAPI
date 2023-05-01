@@ -132,6 +132,8 @@ OPENAI_API_KEY=XXXXXXXX
 
 ## Examples
 
+Download or clone the repo. From the root folder run the following.
+
 A simple api example where the LLM allows you to ask questions and compute things about a dataset
 ```
 npm run example1
