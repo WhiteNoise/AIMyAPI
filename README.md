@@ -13,6 +13,10 @@ Install the package
 ```
 npm i aimyapi --save
 ```
+**Important:** create a .env file in the root of your project and add your OpenAI api key:
+```
+OPENAI_API_KEY=XXXXXXXX
+```
 
 Simply define your strongly-typed typescript API:
 
