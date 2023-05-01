@@ -7,6 +7,6 @@
         "outDir": "dist" /* Redirect output structure to the directory. */,
         "declaration": true
     },
-    "include": ["**/*.ts"],
-    "exclude": ["**/node_modules"]    
+    "include": ["**/lib/*.ts"],
+    "exclude": ["**/node_modules, **/dist"]    
 }

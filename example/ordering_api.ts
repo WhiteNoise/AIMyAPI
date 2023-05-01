@@ -66,20 +66,15 @@ export const Menu: MenuItemBase[] = [
     {
         "name": "Hamburger",
         "price": 8.99,
-        "description": "A classic american hamburger with your choice of toppings. Cheese, lettuce, tomato, and onion are included by default. Other toppings available on request.",
+        "description": "A classic american hamburger with your choice of toppings. Cheese, lettuce, tomato, and onion toppings are included by default. Other toppings available on request.",
         "category": "Burgers",
         "tags": [
             "hamburger",
             "burger"
         ],
         "customizations": [],
-        "allowedCustomizations": [
-            {
-                "name": "Special sauce",
-                "priceAdjustment": 1.99
-            }
-        ],
-        "toppings": [],
+        "allowedCustomizations": [],
+        "toppings": [ "cheese", "lettuce", "tomato", "onion"],
         "allowedToppings": [
             "cheese",
             "lettuce",
@@ -116,7 +111,7 @@ export const Menu: MenuItemBase[] = [
     {
         "name": "Fountain Drink",
         "price": 1.99,
-        "description": "A classic fountain drink. Choose from Cola, Diet Cola, Dr. Dazzle, or Mountain Rush.",
+        "description": "A classic fountain drink. Choose from the following sodas Cola, Diet Cola, Dr. Dazzle, or Mountain Rush. Large size available on request.",
         "category": "Drinks",
         "tags": [
             "drink",
@@ -157,9 +152,9 @@ export interface OrderingAPIInterface {
     // Gets the customization with the specified name for the specified item.
     // If the item does not have a customization with the specified name, returns undefined.
 
-    addItemToOrder(itemName:string, customizationNames: string[], toppings: string[]): void;
+    addItemToOrder(itemName:string, customizationNames: string[] | undefined, toppings: string[] | undefined): void;
     // Adds the specified item to the order.
-    // when adding an item, you should always create a new object that matches the existing menu item structure. Only include the toppings that the user has specified unless they come by default with the item.
+    // leave customizationNames and toppings undefined if you want to use the default values for the item.
 
     removeItemFromOrder(itemOrderId: string): void;
     // Removes the item with the specified id from the order.
@@ -179,8 +174,9 @@ export interface OrderingAPIInterface {
     delay(milliseconds: number): Promise<void>;
     // waits for the specified number of milliseconds before resolving the promise.
 
-    displayItem(item: MenuItemBase): void;
+    displayItem(item: MenuItemBase, justAdded:boolean): void;
     // Displays the specified item to the user.
+    // If justAdded is true, the item will be displayed as a new item in the order.
 
     displayOrder(): void;
     // Displays the current order to the user.

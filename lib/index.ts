@@ -27,22 +27,31 @@ export function createBasePrompt(apiFilePath:string, documentationPath: string):
     const documentationText: string = documentationPath ? fs.readFileSync(documentationPath, 'utf8') : '';
 
     //console.time("Loading templates");
-    
-    const createTaskPrompt: string = fs.readFileSync( path.join(__dirname, '../prompts/create-task-prompt.md'), 'utf8').replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText);
-    
+    const createTaskPrompt: string = fs.readFileSync( path.join(__dirname, '../prompts/create-task-prompt.md'), 'utf8').replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText);   
     //console.timeEnd("Loading templates")
     
     return createTaskPrompt;
 }
 
-// userChatHistory is not currently used but could be in the future.
+// FIXME: add an options parameter and allow specifying the token limit
 export const generateCode = async function(queryText:string, userChatHistory:ChatCompletionRequestMessage[], createTaskPrompt:string, apiPath:string, debug:boolean = false): Promise<string> {
     if(!queryText)
         return;
 
     let generatedCode = '';
     const prompt = createTaskPrompt.replace("{{QUERY_TEXT}}", queryText);
-
+    const messages:ChatCompletionRequestMessage[] = [
+        {
+            role: "system",
+            content: prompt,
+        },
+        ...userChatHistory,
+        {
+            role: "user",
+            content: `${queryText}`,
+            name: "user"
+        }
+    ];
     // TODO: I should switch this back to gpt3.5 turbo since it's cheaper
     try {
         // const task = await openai.createCompletion(
@@ -56,23 +65,11 @@ export const generateCode = async function(queryText:string, userChatHistory:Cha
 
         const results = await openai.createChatCompletion({
             model: "gpt-3.5-turbo",
-            messages: [
-                {
-                    role: "system",
-                    content: prompt,
-                },
-                ...userChatHistory,
-                {
-                    role: "user",
-                    content: `${queryText}`,
-                    name: "user"
-                }
-            ],
+            messages: messages,
             temperature: 0.1,
-            max_tokens: 800,
+            max_tokens: 700,
             }
         );
-
 
         if(debug)
             console.log(results.data.usage);
@@ -91,13 +88,13 @@ export const generateCode = async function(queryText:string, userChatHistory:Cha
 
         generatedCode = response.substring(codeStart + 3, codeEnd).replace('typescript', '');
        
-        generatedCode = `// Query=${queryText}\n` + generatedCode.replace("./api.ts", apiPath);
+        generatedCode = generatedCode.replace("./api.ts", apiPath);
         return generatedCode;
     } catch(err) {
         console.error(err);
+        console.log("Prompt", messages);
         return '';
     } 
-
 };
 
 let QuickJS:QuickJSWASMModule = null;

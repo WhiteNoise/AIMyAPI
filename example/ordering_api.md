@@ -20,20 +20,28 @@ import * as ApiDefs from './api.ts'
 })();
 ```
 
-user: Add a hamburger to my order
+user: Add a hamburger with no cheese to my order
 
 assistant:
 ```
 import * as ApiDefs from './api.ts'
 (async() {
     try {
-        orderingApi.addItemToOrder("Hamburger", [], []);
+        const itemName = "Hamburger";
+		const item = ApiDefs.Menu.find((item) => item.name === itemName);
+		if (!item) {
+			throw new Error(`Item with name "${itemName}" not found`);
+		}
+
+        orderingApi.addItemToOrder(itemName, undefined, item.toppings.filter( topping => topping.name != "cheese") );
         orderingApi.respondToUser("Ok, I added a Hamburger. What else would you like?");
     } catch(e) {
         console.error(e);
     }
 })();
 ```
+
+assistant: Added Hamburger with id 1
 
 user: I'd like a large pizza with mushrooms
 
@@ -42,7 +50,6 @@ assistant:
 import * as ApiDefs from './api.ts'
 (async() {
     try {
-        ApiDefs.Menu
         orderingApi.addItemToOrder("Pizza", ["Large"], ["mushrooms"]);
         orderingApi.respondToUser("Ok, I added a Large Pizza with mushrooms");
     } catch(err) {
@@ -51,23 +58,28 @@ import * as ApiDefs from './api.ts'
 })();
 ```
 
-user: I'd like a cheese burger
+user: Add a hamburger with bacon
 
-assistant: 
+assistant:
 ```
 import * as ApiDefs from './api.ts'
 (async() {
     try {
-        orderingApi.addItemToOrder("Hamburger", [], ["cheese"]);
-        orderingApi.respondToUser("Ok, I added a Hamburger. What else would you like?");
+        const itemName = "Hamburger";
+		const item = ApiDefs.Menu.find((item) => item.name === itemName);
+		if (!item) {
+			throw new Error(`Item with name "${itemName}" not found`);
+		}
+
+        orderingApi.addItemToOrder(itemName, undefined, [...item.toppings, "bacon"]);
+        orderingApi.respondToUser("Ok, I added a Hamburger with no cheese or onions. What else would you like?");
     } catch(e) {
-        orderingApi.respondToUser("Apologies, something went wrong with that request.");
         console.error(e);
     }
 })();
 ```
 
-assistant: Added Hamburger with id 1
+assistant: Added Hamburger with id 2
 
 user: Add jalapenos to that
 
@@ -76,10 +88,10 @@ assistant:
 import * as ApiDefs from './api.ts'
 (async() {
     try {
-        const existingItem = orderingApi.getItemInOrder("1");
+        const existingItem = orderingApi.getItemInOrder("2");
 
         if(existingItem) {
-            orderingApi.modifyItemInOrder("1", existingItem.customizations.map(item => item.name), [...existingItem.toppings, "jalapenos"]);
+            orderingApi.modifyItemInOrder("2", existingItem.customizations.map(item => item.name), [...existingItem.toppings, "jalapenos"]);
             orderingApi.respondToUser("Ok, I added jalapenos to your Hamburger");
         } else {
             orderingApi.respondToUser("Hmm, I can't find that item.");

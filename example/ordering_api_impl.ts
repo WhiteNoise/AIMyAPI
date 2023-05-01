@@ -26,10 +26,7 @@ export class OrderingAPI implements OrderingAPIInterface {
 
 	respondToUser(text: string): void {
 		console.log(text);
-		this._history.push({
-			role: "assistant",
-			content: "Response output: " + text,
-		});
+
 	}
 
 	delay(milliseconds: number): Promise<void> {
@@ -61,33 +58,38 @@ export class OrderingAPI implements OrderingAPIInterface {
 
 	addItemToOrder(
 		itemName: string,
-		customizationNames: string[],
-		toppings: string[]
+		customizationNames: string[] | undefined,
+		toppings: string[] | undefined
 	) {
 		const item = Menu.find((item) => item.name === itemName);
 		if (!item) {
 			throw new Error(`Item with name "${itemName}" not found`);
 		}
 
-		const customizations = customizationNames
+		const customizations = customizationNames ? customizationNames
 			.map((customizationName) => {
 				return this.getCustomizationByName(itemName, customizationName);
 			})
 			.filter(
 				(customization) => customization !== undefined
-			) as Customization[];
+			) as Customization[] : [...item.customizations];
 
 		const newItem = {
 			...item,
 			customizations,
-			toppings: toppings,
+			toppings: toppings ? toppings : [...item.toppings],
 			orderId: "" + this._lastOrderIdNumber++,
 		};
 
 		this._order.push(newItem);
 
-		this.respondToUser(`Added ${itemName} with id ${newItem.orderId}`);
-		this.displayItem(newItem);
+		//this.respondToUser(`Added ${itemName} with id ${newItem.orderId}`);
+
+		this._history.push({
+			role: "user",
+			content: `I see you have added added ${itemName} with id ${newItem.orderId}`,
+		});
+		this.displayItem(newItem, true);
 	}
 
     getItemInOrder(itemOrderId: string): MenuItemBase {
@@ -102,6 +104,10 @@ export class OrderingAPI implements OrderingAPIInterface {
 	removeItemFromOrder(itemOrderId: string) {
 		this._order = this._order.filter((item) => item.orderId !== itemOrderId);
 
+		this._history.push({
+			role: "user",
+			content: `I see you have removed item ${itemOrderId}`,
+		});
 		this.respondToUser(`Removed item ${itemOrderId}`);
 	}
 
@@ -132,6 +138,10 @@ export class OrderingAPI implements OrderingAPIInterface {
 			throw new Error(`Item with id #"${itemOrderId}" not found in order`);
 		}
 
+		this._history.push({
+			role: "user",
+			content: `I see you have modified item ${itemOrderId}`,
+		});
 		this.respondToUser(`Modified item ${itemOrderId}`);
 	}
 
@@ -160,20 +170,19 @@ export class OrderingAPI implements OrderingAPIInterface {
         this._isCompleted = true;
 	}
 
-	displayItem(item: MenuItemBase) {
-		this.respondToUser(
-			`\t#${item.orderId || ""} ${item.name}...\t\t$${item.price.toFixed(2)}`
-		);
+	displayItem(item: MenuItemBase, justAdded: boolean = false) {
+		let output = "";
+
+		output += `\t${justAdded ? "added " : ""}#${item.orderId || ""} ${item.name}...\t\t$${item.price.toFixed(2)}\n`;
 		item.toppings.forEach((topping) => {
-			this.respondToUser(`\t\t${topping}`);
+			output += `\t\t${topping}\n`;
 		});
 		item.customizations.forEach((customization) => {
-			this.respondToUser(
-				`\t\t${customization.name}...\t$${customization.priceAdjustment.toFixed(
-					2
-				)}`
-			);
+			output += `\t\t${customization.name}...\t$${customization.priceAdjustment.toFixed(2)}\n`;
 		});
+
+
+		this.respondToUser(output)
 	}
 
 	displayOrder() {

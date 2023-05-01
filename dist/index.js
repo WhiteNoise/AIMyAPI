@@ -29,12 +29,24 @@ function createBasePrompt(apiFilePath, documentationPath) {
     return createTaskPrompt;
 }
 exports.createBasePrompt = createBasePrompt;
-// userChatHistory is not currently used but could be in the future.
+// FIXME: add an options parameter and allow specifying the token limit
 const generateCode = async function (queryText, userChatHistory, createTaskPrompt, apiPath, debug = false) {
     if (!queryText)
         return;
     let generatedCode = '';
     const prompt = createTaskPrompt.replace("{{QUERY_TEXT}}", queryText);
+    const messages = [
+        {
+            role: "system",
+            content: prompt,
+        },
+        ...userChatHistory,
+        {
+            role: "user",
+            content: `${queryText}`,
+            name: "user"
+        }
+    ];
     // TODO: I should switch this back to gpt3.5 turbo since it's cheaper
     try {
         // const task = await openai.createCompletion(
@@ -47,20 +59,9 @@ const generateCode = async function (queryText, userChatHistory, createTaskPromp
         // );
         const results = await openai.createChatCompletion({
             model: "gpt-3.5-turbo",
-            messages: [
-                {
-                    role: "system",
-                    content: prompt,
-                },
-                ...userChatHistory,
-                {
-                    role: "user",
-                    content: `${queryText}`,
-                    name: "user"
-                }
-            ],
+            messages: messages,
             temperature: 0.1,
-            max_tokens: 800,
+            max_tokens: 700,
         });
         if (debug)
             console.log(results.data.usage);
@@ -73,11 +74,12 @@ const generateCode = async function (queryText, userChatHistory, createTaskPromp
         if (codeStart === -1 || codeEnd === -1 || codeStart === codeEnd)
             return '';
         generatedCode = response.substring(codeStart + 3, codeEnd).replace('typescript', '');
-        generatedCode = `// Query=${queryText}\n` + generatedCode.replace("./api.ts", apiPath);
+        generatedCode = generatedCode.replace("./api.ts", apiPath);
         return generatedCode;
     }
     catch (err) {
         console.error(err);
+        console.log("Prompt", messages);
         return '';
     }
 };
@@ -173,7 +175,7 @@ const aimyapi = {
     createWithAPI,
     // functions for customized usage
     createBasePrompt,
-    generateTask: exports.generateCode,
+    generateCode: exports.generateCode,
     createSandbox: sandbox_1.default,
 };
 exports.default = aimyapi;

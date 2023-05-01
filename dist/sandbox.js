@@ -121,7 +121,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
             try {
                 const compiled = tsCompile(task);
                 if (!compiled || compiled.length === 0) {
-                    console.log("Could not compile");
+                    console.error("Could not compile", task);
                     return false;
                 }
                 // View compiled typescript code for debugging

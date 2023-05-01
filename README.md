@@ -289,49 +289,76 @@ import path from "path";
 Output:
 ```
 Query: How's the burger here?
-Our Hamburger is one of our most popular items! It comes with cheese, lettuce, tomato, and onion by default, but you can add other toppings as well.
-Query: I'd like a plain hamburger and a large fries, a pizza with anchovies and a cola. I'd also like a cheese burger with bacon and avocado.
-Added Hamburger with id 0
-        #0 Hamburger...         $8.99
-Added Fries with id 1
-        #1 Fries...             $2.99
+Our Hamburger is delicious! It comes with cheese, lettuce, tomato, and onion by default, but you can customize it with any of our toppings.
+Query: I'd like a plain hamburger (no cheese) and a large fries, a pizza with anchovies and a cola. I'd also like a cheese burger with bacon and avocado.
+        added #0 Hamburger...           $8.99
+                lettuce
+                tomato
+                onion
+
+Ok, I added a plain hamburger. What else would you like?
+        added #1 Fries...               $2.99
                 Large...        $1.99
-Added Pizza with id 2
-        #2 Pizza...             $10.99
+
+Ok, I added large fries. What else would you like?
+        added #2 Pizza...               $10.99
                 anchovies
-Added Fountain Drink with id 3
-        #3 Fountain Drink...            $1.99
+
+Ok, I added a pizza with anchovies. What else would you like?
+        added #3 Fountain Drink...              $1.99
                 Large...        $0.99
-Added Hamburger with id 4
-        #4 Hamburger...         $8.99
+
+Ok, I added a cola. What else would you like?
+        added #4 Hamburger...           $8.99
+                cheese
+                lettuce
+                tomato
+                onion
+                cheese
                 bacon
                 avocado
-Ok, I added a plain Hamburger, a large Fries, a Pizza with anchovies, a large Cola, and a Cheeseburger with bacon and avocado. What else would you like?
+
+Ok, I added a cheese burger with bacon and avocado. Is there anything else I can help you with?
 Query: I changed my mind, instead of anchovies, can I get a large gluten free pizza with pineapple instead.
-Modified item 2
-Ok, I added a large gluten free Pizza with pineapple instead of anchovies.
+Removed item 2
+        added #5 Pizza...               $10.99
+                pineapple
+                Gluten Free Crust...    $2.99
+
+Ok, I added a large gluten free pizza with pineapple. Is there anything else I can help you with?
 Query: email me the total at myemail@test.com and complete the order
 Sending email to "myemail@test.com" with subject "Order Total" and body
 "Your order total is $39.92."
 ----
 
 Displaying order:
-
-
         #0 Hamburger...         $8.99
+                lettuce
+                tomato
+                onion
+
         #1 Fries...             $2.99
                 Large...        $1.99
-        #2 Pizza...             $10.99
-                pineapple
-                Gluten Free Crust...    $2.99
+
         #3 Fountain Drink...            $1.99
                 Large...        $0.99
+
         #4 Hamburger...         $8.99
+                cheese
+                lettuce
+                tomato
+                onion
+                cheese
                 bacon
                 avocado
+
+        #5 Pizza...             $10.99
+                pineapple
+                Gluten Free Crust...    $2.99
+
 --      Total:          $39.92
 Order completed!
-Your order is complete! Your total is $39.92. Thank you for your business!
+Your order has been completed. Thank you for choosing our restaurant!
 ```
 
 # Example 3 - interactive food ordering

@@ -139,7 +139,7 @@ export default async function createSandbox(QuickJS, requireLookup:any = {}, glo
         const compiled = tsCompile(task);
 
         if (!compiled || compiled.length === 0) {
-          console.log("Could not compile");
+          console.error("Could not compile", task);
           return false;
         }
 

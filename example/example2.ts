@@ -8,14 +8,15 @@ import path from "path";
 (async () => {
     const api = new OrderingAPI();
 
-    const aimyapi = await AIMyAPI.createWithAPI({
+    const options = {
         apiObject: api,
         apiGlobalName: "orderingApi",       // Should match whatever you declared as your global in your ordering api.
         apiExports: APIExports,
         apiDefFilePath: path.join(__dirname, "./ordering_api.ts"),
         apiDocsPath: path.join(__dirname, "./ordering_api.md"),
         debug: false,
-    })
+    };
+    const aimyapi = await AIMyAPI.createWithAPI(options)
 
     async function runQuery(query:string) {
         console.log(`Query: ${query}`)
@@ -30,7 +31,7 @@ import path from "path";
         });
 
         api._addMessageToHistory({
-            content: '```\n' + code + '\n```',
+            content: '```\n' + code.replace(options.apiDefFilePath, "./api.ts") + '\n```',
             role: "assistant",
             name: "assistant",
         });
@@ -40,7 +41,7 @@ import path from "path";
     }
    
     await runQuery("How's the burger here?");
-    await runQuery("I'd like a plain hamburger and a large fries, a pizza with anchovies and a cola. I'd also like a cheese burger with bacon and avocado.");
+    await runQuery("I'd like a plain hamburger (no cheese) and a large fries, a pizza with anchovies and a cola. I'd also like a cheese burger with bacon and avocado.");
     await runQuery("I changed my mind, instead of anchovies, can I get a large gluten free pizza with pineapple instead.");
     await runQuery("email me the total at myemail@test.com and complete the order");
 
