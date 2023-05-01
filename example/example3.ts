@@ -23,15 +23,16 @@ function getInput(query): Promise<string> {
 // Interactive version
 (async () => {
     const api = new OrderingAPI();
-
-    const aimyapi = await AIMyAPI.createWithAPI({
+    
+    const options = {
         apiObject: api,
         apiGlobalName: "orderingApi",       // Should match whatever you declared as your global in your ordering api.
         apiExports: APIExports,
         apiDefFilePath: path.join(__dirname, "./ordering_api.ts"),
         apiDocsPath: path.join(__dirname, "./ordering_api.md"),
         debug: false,
-    })
+    };
+    const aimyapi = await AIMyAPI.createWithAPI(options)
 
     async function runQuery(query:string) {
         console.log(`Query: ${query}`)
@@ -46,7 +47,7 @@ function getInput(query): Promise<string> {
         });
 
         api._addMessageToHistory({
-            content: '```\n' + code + '\n```',
+            content: '```\n' + code.replace(options.apiDefFilePath, "./api.ts") + '\n```',
             role: "assistant",
             name: "assistant",
         });

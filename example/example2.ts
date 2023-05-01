@@ -5,6 +5,8 @@ import path from "path";
 
 // More complex fast food ordering example that uses chat history.
 // Fast food ordering example.
+
+// IDEA: If the order history becomes too long, we could summarize it by listing the current order state and remove the rest.
 (async () => {
     const api = new OrderingAPI();
 
