@@ -1,9 +1,7 @@
-
 import AIMyAPI from "../lib";
 import { API } from "./sales_api_impl";
 import * as APIExports from "./sales_api";
 import path from "path";
-
 
 // Simpler example using no support for chat history; 
 

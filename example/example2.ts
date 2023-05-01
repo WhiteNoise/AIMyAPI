@@ -1,10 +1,7 @@
-
 import AIMyAPI from "../lib";
 import { OrderingAPI } from "./ordering_api_impl";
 import * as APIExports from "./ordering_api";
 import path from "path";
-
-
 
 // More complex fast food ordering example that uses chat history.
 // Fast food ordering example.

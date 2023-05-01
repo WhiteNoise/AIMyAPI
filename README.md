@@ -152,18 +152,82 @@ The module created by the `createWithAPI` function:
 
 #### Methods
 
-- `generateCode(queryText: string, userChatHistory: ChatCompletionRequestMessage[]): Promise<string>`: A function that generates code for the given query text and user chat history.
-- `runCode(task: string): Promise<void>`: A function that runs the generated code.
-- `processRequest(userQuery: string, context?: object): Promise<string>`: A function that processes a user request.
+- `generateCode(queryText: string, userChatHistory: ChatCompletionRequestMessage[]): Promise<string>`: A function that generates code to be run in the sandbox for the given query text and user chat history.
+- `runCode(task: string): Promise<void>`: A function that runs the generated code in the sandbox.
+- `processRequest(userQuery: string, context?: object): Promise<string>`: A single function that generates and runs code assuming no chat history.
 
 ## Examples
 
 Download or clone the repo. From the root folder run the following.
 
+
+### Example 1 - sales database
 A simple api example where the LLM allows you to ask questions and compute things about a dataset
 ```
 npm run example1
 ```
+
+```
+import AIMyAPI from "../lib";
+import { API } from "./sales_api_impl";
+import * as APIExports from "./sales_api";
+import path from "path";
+
+// Simpler example using no support for chat history; 
+
+(async () => {
+    const api = new API();
+
+    const aimyapi = await AIMyAPI.createWithAPI({
+        apiObject: api,
+        apiGlobalName: "api", // Should match whatever you declared as your global in your api.
+        apiExports: APIExports,
+        apiDefFilePath: path.join(__dirname, "./sales_api.ts"),
+        apiDocsPath: path.join(__dirname, "./sales_api.md"),
+        debug: false,
+    })
+    
+    console.log("Print 'hello' three times.")
+    await aimyapi.processRequest("Print 'hello' three times.");
+
+    console.log("What was our best month in 2020")
+    await aimyapi.processRequest("What was our best month in 2020");
+
+    console.log("Which business unit had the highest sales in 2020?")
+    await aimyapi.processRequest("Which business unit had the highest sales in 2020?");
+
+    console.log("Compute the total sales for each month in 2020 then email the top 3 to test@email.com")
+    await aimyapi.processRequest("Compute the total sales for each month in 2020 then email the top 3 to test@email.com");
+})();
+```
+
+Output:
+```
+Print 'hello' three times.
+Generate Task: 4.086s
+hello
+hello
+hello
+Run Code: 379.328ms
+What was our best month in 2020
+Generate Task: 11.345s
+Our best month in 2020 was month 8 with 4400 sales.
+Run Code: 119.145ms
+Which business unit had the highest sales in 2020?
+Generate Task: 11.477s
+The business unit with the highest sales in 2020 was Hardware
+Run Code: 124.522ms
+Compute the total sales for each month in 2020 then email the top 3 to test@email.com
+Generate Task: 15.648s
+Sending email to "test@email.com" with subject "Top 3 Sales Months in 2020" and body
+"Top 3 sales months in 2020:
+Month 8: $4400
+Month 7: $4300
+Month 6: $4000"
+Run Code: 1.200s
+```
+
+### Example 2 - Food ordering bot
 
 A more complex food ordering example which incorporates chat history
 
@@ -171,7 +235,108 @@ A more complex food ordering example which incorporates chat history
 npm run example2
 ```
 
-Interactive ordering example (same api as example2)
+Code:
+```
+import AIMyAPI from "../lib";
+import { OrderingAPI } from "./ordering_api_impl";
+import * as APIExports from "./ordering_api";
+import path from "path";
+
+// More complex fast food ordering example that uses chat history.
+// Fast food ordering example.
+(async () => {
+    const api = new OrderingAPI();
+
+    const aimyapi = await AIMyAPI.createWithAPI({
+        apiObject: api,
+        apiGlobalName: "orderingApi",       // Should match whatever you declared as your global in your ordering api.
+        apiExports: APIExports,
+        apiDefFilePath: path.join(__dirname, "./ordering_api.ts"),
+        apiDocsPath: path.join(__dirname, "./ordering_api.md"),
+        debug: false,
+    })
+
+    async function runQuery(query:string) {
+        console.log(`Query: ${query}`)
+
+        // generate the code for this query
+        const code = await aimyapi.generateCode(query, api._getHistory());
+
+        api._addMessageToHistory({
+            content: query,
+            role: "user",
+            name: "user",
+        });
+
+        api._addMessageToHistory({
+            content: '```\n' + code + '\n```',
+            role: "assistant",
+            name: "assistant",
+        });
+
+        // run the code in the sandbox
+        await aimyapi.runCode(code);
+    }
+   
+    await runQuery("How's the burger here?");
+    await runQuery("I'd like a plain hamburger and a large fries, a pizza with anchovies and a cola. I'd also like a cheese burger with bacon and avocado.");
+    await runQuery("I changed my mind, instead of anchovies, can I get a large gluten free pizza with pineapple instead.");
+    await runQuery("email me the total at myemail@test.com and complete the order");
+
+})();
+```
+
+Output:
+```
+Query: How's the burger here?
+Our Hamburger is one of our most popular items! It comes with cheese, lettuce, tomato, and onion by default, but you can add other toppings as well.
+Query: I'd like a plain hamburger and a large fries, a pizza with anchovies and a cola. I'd also like a cheese burger with bacon and avocado.
+Added Hamburger with id 0
+        #0 Hamburger...         $8.99
+Added Fries with id 1
+        #1 Fries...             $2.99
+                Large...        $1.99
+Added Pizza with id 2
+        #2 Pizza...             $10.99
+                anchovies
+Added Fountain Drink with id 3
+        #3 Fountain Drink...            $1.99
+                Large...        $0.99
+Added Hamburger with id 4
+        #4 Hamburger...         $8.99
+                bacon
+                avocado
+Ok, I added a plain Hamburger, a large Fries, a Pizza with anchovies, a large Cola, and a Cheeseburger with bacon and avocado. What else would you like?
+Query: I changed my mind, instead of anchovies, can I get a large gluten free pizza with pineapple instead.
+Modified item 2
+Ok, I added a large gluten free Pizza with pineapple instead of anchovies.
+Query: email me the total at myemail@test.com and complete the order
+Sending email to "myemail@test.com" with subject "Order Total" and body
+"Your order total is $39.92."
+----
+
+Displaying order:
+
+
+        #0 Hamburger...         $8.99
+        #1 Fries...             $2.99
+                Large...        $1.99
+        #2 Pizza...             $10.99
+                pineapple
+                Gluten Free Crust...    $2.99
+        #3 Fountain Drink...            $1.99
+                Large...        $0.99
+        #4 Hamburger...         $8.99
+                bacon
+                avocado
+--      Total:          $39.92
+Order completed!
+Your order is complete! Your total is $39.92. Thank you for your business!
+```
+
+# Example 3 - interactive food ordering
+
+Interactive ordering example (same api as example2). You can type your own orders on the command line.
 
 ```
 npm run example3
