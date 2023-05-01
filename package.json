@@ -1,6 +1,6 @@
 {
   "name": "aimyapi",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "AI My API! Use LLMs to create small programs that safely* run and make calls against your API.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

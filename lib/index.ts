@@ -230,7 +230,7 @@ export interface AIMyAPIExports {
     createWithAPI: (options:AIMyAPIOptions) => Promise<CreateWithAPIExports>;
     
     createBasePrompt: (apiFilePath:string, documentationPath: string) => string;
-    generateTask: (queryText:string, userChatHistory:any[], createTaskPrompt:string, apiPath:string) => Promise<string>;
+    generateCode: (queryText:string, userChatHistory:ChatCompletionRequestMessage[], createTaskPrompt:string, apiPath:string, debug:boolean) => Promise<string>;
     createSandbox: (QuickJS:QuickJSWASMModule, globals: any) => Promise<any>;
 }
 
@@ -240,7 +240,7 @@ const aimyapi:AIMyAPIExports = {
 
     // functions for customized usage
     createBasePrompt,   
-    generateTask: generateCode,
+    generateCode,
     createSandbox,
 }
 

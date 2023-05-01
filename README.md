@@ -130,6 +130,32 @@ add your open ai key:
 OPENAI_API_KEY=XXXXXXXX
 ```
 
+## API Reference for AIMyAPI
+
+### createWithAPI(options: AIMyAPIOptions): Promise<CreateWithAPIExports>
+
+Primary function you will use to create a module for working your API API. For a simple example with no chat history, see example1. For an example with chat history see example2.
+
+#### options
+
+- `apiObject`: An object representing the API to be used.
+- `apiExports`: An object representing the exported functions and variables from the API.
+- `apiGlobals` (optional): An object representing global variables for the API.
+- `apiDefFilePath`: A string representing the full path to the API definition file.
+- `apiGlobalName` (optional): A string representing the name of the global variable for the API.
+- `apiDocsPath` (optional): A string representing the path to the documentation for the API.
+- `debug` (optional): A boolean indicating whether to output debugging information.
+
+### The AIMyAPI module (type: CreateWithAPIExports)
+
+The module created by the `createWithAPI` function:
+
+#### Methods
+
+- `generateCode(queryText: string, userChatHistory: ChatCompletionRequestMessage[]): Promise<string>`: A function that generates code for the given query text and user chat history.
+- `runCode(task: string): Promise<void>`: A function that runs the generated code.
+- `processRequest(userQuery: string, context?: object): Promise<string>`: A function that processes a user request.
+
 ## Examples
 
 Download or clone the repo. From the root folder run the following.
