@@ -1,10 +1,10 @@
 # AI My API
 
-Note: Still working on making this available as a library.
-
 Build AI assistants that use your API's and respond to natural language queries by writing small programs that are executed in a [QuickJS](https://github.com/justjake/quickjs-emscripten) sandbox.
 AIMyAPI writes the glue between your various API functions unlocking new functionality without having to write any code. With the right building blocks, AIMyAPI can even invent new functionality you didn't originally plan for - 
 for example, being able to sort or filter your data in new ways, email or text yourself results, or combine the results of different operations and API's.
+
+Uses the OpenAI API and requires an API key.
 
 ## Quickstart
 Simply define your strongly-typed typescript API:
@@ -194,7 +194,4 @@ In example2, note that responses to the user and relevant information is also ad
 Could fine tuning on our API and examples allow us to make the prompt smaller? We can only fine tune on the base models though, so we can't use the cheaper gpt3.5-turbo model.
 Could a smaller / more efficient LLM focused on coding tasks work for this usecase?
 
-## TODO
 
-Build process so that this can be used as a module
-Interactive ordering example
