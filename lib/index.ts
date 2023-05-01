@@ -3,8 +3,8 @@ import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
 import fs from 'fs';
 import path from 'path';
 
-import createSandbox from "../lib/sandbox";
-import { rejectOpenPromises } from '../lib/sandbox-wrappers';
+import createSandbox from "./sandbox";
+import { rejectOpenPromises } from './sandbox-wrappers';
 
 
 

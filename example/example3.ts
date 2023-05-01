@@ -1,5 +1,5 @@
 
-import AIMyAPI from "../lib/aimyapi";
+import AIMyAPI from "../lib";
 import { OrderingAPI } from "./ordering_api_impl";
 import * as APIExports from "./ordering_api";
 import path from "path";
@@ -20,6 +20,7 @@ function getInput(query): Promise<string> {
 
 // More complex fast food ordering example that uses chat history.
 // Fast food ordering example.
+// Interactive version
 (async () => {
     const api = new OrderingAPI();
 

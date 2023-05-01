@@ -1,5 +1,5 @@
 
-import AIMyAPI from "../lib/aimyapi";
+import AIMyAPI from "../lib";
 import { OrderingAPI } from "./ordering_api_impl";
 import * as APIExports from "./ordering_api";
 import path from "path";

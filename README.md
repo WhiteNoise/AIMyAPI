@@ -147,6 +147,7 @@ npm run example3
 Providing examples is super important.
 We recommend that you instruct the LLM to return a self executing async function enclosed in \`\`\` with no other commentary. See the `example/ordering_api.md` for reference.
 It's recommended that you provide at least one example and no other commentary from the assistant, otherwise the LLM's responses will vary pretty widely and probably be unusable.
+GPT3.5-turbo also has tendency to respond in words even after being instructed to respond only with code. Examples help alleviate this problem.
 
 **Sample example**:
 
