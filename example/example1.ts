@@ -1,7 +1,7 @@
-import AIMyAPI from "../lib";
-import { API } from "./sales_api_impl";
-import * as APIExports from "./sales_api";
 import path from "path";
+import AIMyAPI from "../lib";
+import * as APIExports from "./sales_api";
+import { API } from "./sales_api_impl";
 
 // Simpler example using no support for chat history; 
 
@@ -20,7 +20,7 @@ import path from "path";
     console.log("Print 'hello' three times.")
     await aimyapi.processRequest("Print 'hello' three times.");
 
-    console.log("What was our best month in 2020")
+    console.log("What month had the highest sales in 2020 for any business unit?")
     await aimyapi.processRequest("What was our best month in 2020");
 
     console.log("Which business unit had the highest sales in 2020?")
