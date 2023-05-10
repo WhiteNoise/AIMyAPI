@@ -1,12 +1,10 @@
 require('dotenv').config()
-import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
 import fs from 'fs';
+import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
 import path from 'path';
 
 import createSandbox from "./sandbox";
 import { rejectOpenPromises } from './sandbox-wrappers';
-
-
 
 import { QuickJSWASMModule, getQuickJS } from "quickjs-emscripten";
 
@@ -102,6 +100,7 @@ let QuickJS:QuickJSWASMModule = null;
 export interface AIMyAPIOptions {
     apiObject: object;
     apiExports: object;
+    apiWhitelist?: string[];      // List of functions to expose to the user. Necessary to pass this yourself if you are extending your api from another class.
     apiGlobals?: object;
     apiDefFilePath: string;     // Full path to the api definition file so that it can be loaded into the prompt
     apiGlobalName?: string;    
@@ -123,17 +122,17 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
     options = {
         apiGlobalName: "api",
         apiGlobals: {},
+        apiWhitelist: Object.getOwnPropertyNames(Object.getPrototypeOf(options.apiObject)).filter((f) => f !== "constructor" && !f.startsWith("_")),
         debug: false,
         ...options
-    };
+    } as AIMyAPIOptions;
 
     if(!options.apiObject || !options.apiDefFilePath) {
         throw new Error("apiObject and apiFilePath are required");
     }
 
-    const {apiObject, apiGlobalName, apiExports, apiDefFilePath, apiDocsPath, debug} = options;
+    const {apiObject, apiWhitelist, apiGlobalName, apiExports, apiDefFilePath, apiDocsPath, debug} = options;
 
-    const whitelist =  Object.getOwnPropertyNames(Object.getPrototypeOf(apiObject)).filter((f) => f !== "constructor" && !f.startsWith("_"));
     const createTaskPrompt = createBasePrompt( apiDefFilePath, apiDocsPath);
 
     return {
@@ -167,7 +166,7 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
                 ...apiGlobals,
                 [apiGlobalName]: {
                     value: apiObject,
-                    whitelist
+                    whitelist: apiWhitelist
                 }
             }, options.debug);
 

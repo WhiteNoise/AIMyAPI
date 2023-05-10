@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateCode = exports.createBasePrompt = void 0;
 require('dotenv').config();
-const openai_1 = require("openai");
 const fs_1 = __importDefault(require("fs"));
+const openai_1 = require("openai");
 const path_1 = __importDefault(require("path"));
 const sandbox_1 = __importDefault(require("./sandbox"));
 const sandbox_wrappers_1 = require("./sandbox-wrappers");
@@ -91,14 +91,14 @@ async function createWithAPI(options) {
     options = {
         apiGlobalName: "api",
         apiGlobals: {},
+        apiWhitelist: Object.getOwnPropertyNames(Object.getPrototypeOf(options.apiObject)).filter((f) => f !== "constructor" && !f.startsWith("_")),
         debug: false,
         ...options
     };
     if (!options.apiObject || !options.apiDefFilePath) {
         throw new Error("apiObject and apiFilePath are required");
     }
-    const { apiObject, apiGlobalName, apiExports, apiDefFilePath, apiDocsPath, debug } = options;
-    const whitelist = Object.getOwnPropertyNames(Object.getPrototypeOf(apiObject)).filter((f) => f !== "constructor" && !f.startsWith("_"));
+    const { apiObject, apiWhitelist, apiGlobalName, apiExports, apiDefFilePath, apiDocsPath, debug } = options;
     const createTaskPrompt = createBasePrompt(apiDefFilePath, apiDocsPath);
     return {
         generateCode: async function (queryText, userChatHistory, currentContext = undefined) {
@@ -127,7 +127,7 @@ async function createWithAPI(options) {
                 ...apiGlobals,
                 [apiGlobalName]: {
                     value: apiObject,
-                    whitelist
+                    whitelist: apiWhitelist
                 }
             }, options.debug);
             try {

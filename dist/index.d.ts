@@ -5,6 +5,7 @@ export declare const generateCode: (queryText: string, userChatHistory: ChatComp
 export interface AIMyAPIOptions {
     apiObject: object;
     apiExports: object;
+    apiWhitelist?: string[];
     apiGlobals?: object;
     apiDefFilePath: string;
     apiGlobalName?: string;
