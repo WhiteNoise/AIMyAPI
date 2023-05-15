@@ -264,7 +264,7 @@ import path from "path";
         console.log(`Query: ${query}`)
 
         // generate the code for this query
-        const code = await aimyapi.generateCode(query, api._getHistory());
+        const codeResult = await aimyapi.generateCode(query, api._getHistory());
 
         api._addMessageToHistory({
             content: query,
@@ -273,13 +273,13 @@ import path from "path";
         });
 
         api._addMessageToHistory({
-            content: '```\n' + code + '\n```',
+            content: '```\n' + codeResult.loggableCode + '\n```',
             role: "assistant",
             name: "assistant",
         });
 
         // run the code in the sandbox
-        await aimyapi.runCode(code);
+        await aimyapi.runCode(codeResult.code);
     }
    
     await runQuery("How's the burger here?");
@@ -389,24 +389,20 @@ user: How are you today?
 
 assistant:
 \`\`\`
-import * as ApiDefs from './api.ts'
-(async() {
-    try {
-        api.print("I'm great, thanks for asking!");
-    } catch(e) {
-        console.error(e);
-    }
-})();
+api.print("I'm great, thanks for asking!");
 \`\`\`
+
 ```
 
 Aside from the code generation piece, documenting your API with clearly named functions and comments is important so that the LLM understands how it can be used. A big part of using AIMyAPI is testing out usecases and looking at the code that is generated. Problems can be solved by how you name your api, comments in the api, and examples.
 
 ## A note about history
 
-If you plan to use history, it is vital that you include the generated code in the history. Otherwise, the LLM will start to think that it doesn't need to generate code.
+If you plan to use history, it is vital that you include the generated code in the history. Otherwise, the LLM will start to think that it doesn't need to generate code. Logging is also necessary for keeping track of Id's from past requests so that future requests can leverage that information.
 
-In example2, note that responses to the user and relevant information is also added to the history so that the LLM can reference it for future queries.
+See example2 for more an example on how to do this.
+
+TODO: Add more details explaining how this is done.
 
 ## Safety notes:
 

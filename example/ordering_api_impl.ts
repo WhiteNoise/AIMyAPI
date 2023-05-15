@@ -87,12 +87,13 @@ export class OrderingAPI implements OrderingAPIInterface {
 
 		this._history.push({
 			role: "user",
-			content: `I see you have added added ${itemName} with id ${newItem.orderId}`,
+			name: "log",
+			content: `added added ${itemName} with id ${newItem.orderId}`,
 		});
 		this.displayItem(newItem, true);
 	}
 
-    getItemInOrder(itemOrderId: string): MenuItemBase {
+    getItemInOrder(itemOrderId: string): MenuItemBase | undefined {
         const item = this._order.find((item) => item.orderId === itemOrderId);
         if (!item) {
             return undefined;
@@ -106,7 +107,8 @@ export class OrderingAPI implements OrderingAPIInterface {
 
 		this._history.push({
 			role: "user",
-			content: `I see you have removed item ${itemOrderId}`,
+			name: "log",
+			content: `removed item ${itemOrderId}`,
 		});
 		this.respondToUser(`Removed item ${itemOrderId}`);
 	}
@@ -140,7 +142,8 @@ export class OrderingAPI implements OrderingAPIInterface {
 
 		this._history.push({
 			role: "user",
-			content: `I see you have modified item ${itemOrderId}`,
+			name: "log",
+			content: `modified item ${itemOrderId}`,
 		});
 		this.respondToUser(`Modified item ${itemOrderId}`);
 	}
@@ -188,7 +191,7 @@ export class OrderingAPI implements OrderingAPIInterface {
 	displayOrder() {
 		this.respondToUser("----\n\nDisplaying order:\n\n");
 		this._order.forEach((item) => this.displayItem(item));
-		this.respondToUser(`--\tTotal:\t\t$${this.getOrderTotal()}`);
+		this.respondToUser(`--\tTotal:\t\t$${this.getOrderTotal().toFixed(2)}`);
 	}
 
 	_addMessageToHistory(message: ChatCompletionRequestMessage) {

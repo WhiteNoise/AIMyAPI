@@ -101,6 +101,7 @@ async function createWithAPI(options) {
     const { apiObject, apiWhitelist, apiGlobalName, apiExports, apiDefFilePath, apiDocsPath, debug } = options;
     const createTaskPrompt = createBasePrompt(apiDefFilePath, apiDocsPath);
     return {
+        options,
         generateCode: async function (queryText, userChatHistory, currentContext = undefined) {
             if (!queryText)
                 return '';
@@ -131,6 +132,9 @@ async function createWithAPI(options) {
                 }
             }, options.debug);
             try {
+                if (debug) {
+                    console.log("Running Code:\n", generatedCode);
+                }
                 const res = await runTask(generatedCode);
                 if (!res) {
                     console.error("Task unsuccessful");
@@ -160,9 +164,6 @@ async function createWithAPI(options) {
             console.time("Generate Task");
             const generatedCode = await (0, exports.generateCode)(userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : ""), apiDefFilePath);
             console.timeEnd("Generate Task");
-            if (debug) {
-                console.log("Generated Code:", generatedCode);
-            }
             console.time("Run Code");
             await this.runCode(generatedCode);
             console.timeEnd("Run Code");

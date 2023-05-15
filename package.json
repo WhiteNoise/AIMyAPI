@@ -1,7 +1,7 @@
 {
   "name": "aimyapi",
-  "version": "0.1.9",
-  "description": "AI My API! Use LLMs to create small programs that safely* run and make calls against your API.",
+  "version": "0.1.10",
+  "description": "AI My API! Use LLMs to create small programs that safely* run and make calls against your API. Similar to ChatGPT's Code Interpreter.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {

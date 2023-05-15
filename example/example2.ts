@@ -1,7 +1,7 @@
-import AIMyAPI from "../lib";
-import { OrderingAPI } from "./ordering_api_impl";
-import * as APIExports from "./ordering_api";
 import path from "path";
+import AIMyAPI, { GenerateCodeResult } from "../lib";
+import * as APIExports from "./ordering_api";
+import { OrderingAPI } from "./ordering_api_impl";
 
 // More complex fast food ordering example that uses chat history.
 // Fast food ordering example.
@@ -24,7 +24,7 @@ import path from "path";
         console.log(`Query: ${query}`)
 
         // generate the code for this query
-        const code = await aimyapi.generateCode(query, api._getHistory());
+        const codeResult:GenerateCodeResult = await aimyapi.generateCode(query, api._getHistory());
 
         api._addMessageToHistory({
             content: query,
@@ -33,13 +33,13 @@ import path from "path";
         });
 
         api._addMessageToHistory({
-            content: '```\n' + code.replace(options.apiDefFilePath, "./api.ts") + '\n```',
+            content: '```\n' + codeResult.loggableCode + '\n```',
             role: "assistant",
             name: "assistant",
         });
 
         // run the code in the sandbox
-        await aimyapi.runCode(code);
+        await aimyapi.runCode(codeResult.code);
     }
    
     await runQuery("How's the burger here?");

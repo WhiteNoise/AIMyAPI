@@ -31,8 +31,13 @@ export function createBasePrompt(apiFilePath:string, documentationPath: string):
     return createTaskPrompt;
 }
 
+export interface GenerateCodeResult {
+    code: string;
+    loggableCode: string;
+}
+
 // FIXME: add an options parameter and allow specifying the token limit
-export const generateCode = async function(queryText:string, userChatHistory:ChatCompletionRequestMessage[], createTaskPrompt:string, apiPath:string, debug:boolean = false): Promise<string> {
+export const generateCode = async function(queryText:string, userChatHistory:ChatCompletionRequestMessage[], createTaskPrompt:string, apiPath:string, debug:boolean = false): Promise<GenerateCodeResult> {
     if(!queryText)
         return;
 
@@ -50,17 +55,7 @@ export const generateCode = async function(queryText:string, userChatHistory:Cha
             name: "user"
         }
     ];
-    // TODO: I should switch this back to gpt3.5 turbo since it's cheaper
     try {
-        // const task = await openai.createCompletion(
-        //     {
-        //     model: "text-davinci-003",
-        //     prompt,
-        //     temperature: 0.1,
-        //     max_tokens: 1100,
-        //     }
-        // );
-
         const results = await openai.createChatCompletion({
             model: "gpt-3.5-turbo",
             messages: messages,
@@ -81,17 +76,20 @@ export const generateCode = async function(queryText:string, userChatHistory:Cha
         const codeStart = response.indexOf('```');
         const codeEnd = response.lastIndexOf('```');
 
-        if(codeStart === -1 || codeEnd === -1 || codeStart === codeEnd)
-            return '';
+        // error, no code detected inside the response
+        if(codeStart === -1 || codeEnd === -1 || codeStart === codeEnd) {
+            return { code: '', loggableCode: '' };
+        }
 
         generatedCode = response.substring(codeStart + 3, codeEnd).replace('typescript', '');
        
-        generatedCode = generatedCode.replace("./api.ts", apiPath);
-        return generatedCode;
+        const codeHeader = `// Query: ${queryText}\nimport * as ApiDefs from '${apiPath}'\n(async() {\n\ttry {`;
+        const codeFooter = `\n\t} catch(err) {\n\t\tconsole.error(err);\n\t}\n})();`;
+        return { code: codeHeader + generatedCode + codeFooter, loggableCode: generatedCode };
     } catch(err) {
         console.error(err);
         console.log("Prompt", messages);
-        return '';
+        return { code: '', loggableCode: '' };
     } 
 };
 
@@ -108,16 +106,17 @@ export interface AIMyAPIOptions {
     debug?: boolean;
 };
 
-export interface CreateWithAPIExports {
+export interface AIMyAPIInstance {
     // see xample 2
-    generateCode: (queryText:string, userChatHistory:ChatCompletionRequestMessage[]) => Promise<string>;
+    options:AIMyAPIOptions;
+    generateCode: (queryText:string, userChatHistory:ChatCompletionRequestMessage[]) => Promise<GenerateCodeResult>;
     runCode: (task:string) => Promise<void>;
     // run a single request with no history
-    processRequest: (userQuery:string, context?: object) => Promise<string>;
+    processRequest: (userQuery:string, context?: object) => Promise<GenerateCodeResult>;
     
 }
 
-async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExports> {
+async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
     // extend options with defaults
     options = {
         apiGlobalName: "api",
@@ -136,9 +135,10 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
     const createTaskPrompt = createBasePrompt( apiDefFilePath, apiDocsPath);
 
     return {
+        options,
         generateCode: async function(queryText:string, userChatHistory:ChatCompletionRequestMessage[], currentContext:any = undefined) {
             if(!queryText)
-                return '';
+                return { code: '', loggableCode: '' };
 
             return await generateCode(queryText, userChatHistory, createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : ""), apiDefFilePath, debug);
         },
@@ -171,6 +171,10 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
             }, options.debug);
 
             try {
+                if(debug) {
+                    console.log("Running Code:\n", generatedCode);
+                }
+
                 const res = await runTask(generatedCode);
         
                 if(!res) {
@@ -196,7 +200,7 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
             vm.dispose()             
         
         }, 
-        processRequest: async function (userQuery, currentContext:any = undefined):Promise<string> {
+        processRequest: async function (userQuery, currentContext:any = undefined):Promise<GenerateCodeResult> {
             // Create prompt
             
             if(debug) {
@@ -205,15 +209,11 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
         
             // Generate Code
             console.time("Generate Task")
-            const generatedCode = await generateCode(userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : "" ), apiDefFilePath);
+            const generatedCode:GenerateCodeResult = await generateCode(userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : "" ), apiDefFilePath);
             console.timeEnd("Generate Task")
         
-            if(debug) {
-                console.log("Generated Code:", generatedCode);
-            }
-
             console.time("Run Code")
-            await this.runCode(generatedCode);
+            await this.runCode(generatedCode.code);
             console.timeEnd("Run Code")
 
             return generatedCode;
@@ -222,15 +222,15 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<CreateWithAPIExpor
 
 }
 
-export interface AIMyAPIExports {
-    createWithAPI: (options:AIMyAPIOptions) => Promise<CreateWithAPIExports>;
+export interface AIMyAPIModuleExports {
+    createWithAPI: (options:AIMyAPIOptions) => Promise<AIMyAPIInstance>;
     
     createBasePrompt: (apiFilePath:string, documentationPath: string) => string;
-    generateCode: (queryText:string, userChatHistory:ChatCompletionRequestMessage[], createTaskPrompt:string, apiPath:string, debug:boolean) => Promise<string>;
+    generateCode: (queryText:string, userChatHistory:ChatCompletionRequestMessage[], createTaskPrompt:string, apiPath:string, debug:boolean) => Promise<GenerateCodeResult>;
     createSandbox: (QuickJS:QuickJSWASMModule, globals: any) => Promise<any>;
 }
 
-const aimyapi:AIMyAPIExports = {
+const aimyapi:AIMyAPIModuleExports = {
     // Standard way of using the library
     createWithAPI,      
 

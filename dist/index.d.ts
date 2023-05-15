@@ -12,16 +12,17 @@ export interface AIMyAPIOptions {
     apiDocsPath?: string;
     debug?: boolean;
 }
-export interface CreateWithAPIExports {
+export interface AIMyAPIInstance {
+    options: AIMyAPIOptions;
     generateCode: (queryText: string, userChatHistory: ChatCompletionRequestMessage[]) => Promise<string>;
     runCode: (task: string) => Promise<void>;
     processRequest: (userQuery: string, context?: object) => Promise<string>;
 }
-export interface AIMyAPIExports {
-    createWithAPI: (options: AIMyAPIOptions) => Promise<CreateWithAPIExports>;
+export interface AIMyAPIModuleExports {
+    createWithAPI: (options: AIMyAPIOptions) => Promise<AIMyAPIInstance>;
     createBasePrompt: (apiFilePath: string, documentationPath: string) => string;
     generateCode: (queryText: string, userChatHistory: ChatCompletionRequestMessage[], createTaskPrompt: string, apiPath: string, debug: boolean) => Promise<string>;
     createSandbox: (QuickJS: QuickJSWASMModule, globals: any) => Promise<any>;
 }
-declare const aimyapi: AIMyAPIExports;
+declare const aimyapi: AIMyAPIModuleExports;
 export default aimyapi;
