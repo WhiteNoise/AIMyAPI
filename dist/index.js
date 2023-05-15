@@ -47,16 +47,7 @@ const generateCode = async function (queryText, userChatHistory, createTaskPromp
             name: "user"
         }
     ];
-    // TODO: I should switch this back to gpt3.5 turbo since it's cheaper
     try {
-        // const task = await openai.createCompletion(
-        //     {
-        //     model: "text-davinci-003",
-        //     prompt,
-        //     temperature: 0.1,
-        //     max_tokens: 1100,
-        //     }
-        // );
         const results = await openai.createChatCompletion({
             model: "gpt-3.5-turbo",
             messages: messages,
@@ -71,16 +62,19 @@ const generateCode = async function (queryText, userChatHistory, createTaskPromp
         // Return only the code between ``` and ``` (usually at the end of the completion)
         const codeStart = response.indexOf('```');
         const codeEnd = response.lastIndexOf('```');
-        if (codeStart === -1 || codeEnd === -1 || codeStart === codeEnd)
-            return '';
+        // error, no code detected inside the response
+        if (codeStart === -1 || codeEnd === -1 || codeStart === codeEnd) {
+            return { code: '', loggableCode: '' };
+        }
         generatedCode = response.substring(codeStart + 3, codeEnd).replace('typescript', '');
-        generatedCode = generatedCode.replace("./api.ts", apiPath);
-        return generatedCode;
+        const codeHeader = `// Query: ${queryText}\nimport * as ApiDefs from '${apiPath}'\n(async() {\n\ttry {`;
+        const codeFooter = `\n\t} catch(err) {\n\t\tconsole.error(err);\n\t}\n})();`;
+        return { code: codeHeader + generatedCode + codeFooter, loggableCode: generatedCode };
     }
     catch (err) {
         console.error(err);
         console.log("Prompt", messages);
-        return '';
+        return { code: '', loggableCode: '' };
     }
 };
 exports.generateCode = generateCode;
@@ -104,7 +98,7 @@ async function createWithAPI(options) {
         options,
         generateCode: async function (queryText, userChatHistory, currentContext = undefined) {
             if (!queryText)
-                return '';
+                return { code: '', loggableCode: '' };
             return await (0, exports.generateCode)(queryText, userChatHistory, createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : ""), apiDefFilePath, debug);
         },
         runCode: async function (generatedCode) {
@@ -165,7 +159,7 @@ async function createWithAPI(options) {
             const generatedCode = await (0, exports.generateCode)(userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```" + JSON.stringify(currentContext, null, 2) + "```" : ""), apiDefFilePath);
             console.timeEnd("Generate Task");
             console.time("Run Code");
-            await this.runCode(generatedCode);
+            await this.runCode(generatedCode.code);
             console.timeEnd("Run Code");
             return generatedCode;
         }
