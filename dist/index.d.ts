@@ -4,6 +4,7 @@ export declare function createBasePrompt(apiFilePath: string, documentationPath:
 export interface GenerateCodeResult {
     code: string;
     loggableCode: string;
+    rawResponse?: string;
 }
 export declare const generateCode: (queryText: string, userChatHistory: ChatCompletionRequestMessage[], createTaskPrompt: string, apiPath: string, debug?: boolean) => Promise<GenerateCodeResult>;
 export interface AIMyAPIOptions {

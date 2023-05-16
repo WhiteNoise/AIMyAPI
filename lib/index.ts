@@ -34,12 +34,13 @@ export function createBasePrompt(apiFilePath:string, documentationPath: string):
 export interface GenerateCodeResult {
     code: string;
     loggableCode: string;
+    rawResponse?: string;
 }
 
 // FIXME: add an options parameter and allow specifying the token limit
 export const generateCode = async function(queryText:string, userChatHistory:ChatCompletionRequestMessage[], createTaskPrompt:string, apiPath:string, debug:boolean = false): Promise<GenerateCodeResult> {
     if(!queryText)
-        return;
+        return { code: '', loggableCode: '' };
 
     let generatedCode = '';
     const prompt = createTaskPrompt.replace("{{QUERY_TEXT}}", queryText);
@@ -51,7 +52,7 @@ export const generateCode = async function(queryText:string, userChatHistory:Cha
         ...userChatHistory,
         {
             role: "user",
-            content: `${queryText}`,
+            content: `${queryText}.\nRespond only with code enclosed in \`\`\`.`,
             name: "user"
         }
     ];
@@ -78,17 +79,16 @@ export const generateCode = async function(queryText:string, userChatHistory:Cha
 
         // error, no code detected inside the response
         if(codeStart === -1 || codeEnd === -1 || codeStart === codeEnd) {
-            return { code: '', loggableCode: '' };
+            return { code: '', loggableCode: '', rawResponse: response };
         }
 
         generatedCode = response.substring(codeStart + 3, codeEnd).replace('typescript', '');
        
-        const codeHeader = `// Query: ${queryText}\nimport * as ApiDefs from '${apiPath}'\n(async() {\n\ttry {`;
+        const codeHeader = `import * as ApiDefs from '${apiPath}'\n(async() {\n\ttry {`;
         const codeFooter = `\n\t} catch(err) {\n\t\tconsole.error(err);\n\t}\n})();`;
         return { code: codeHeader + generatedCode + codeFooter, loggableCode: generatedCode };
     } catch(err) {
         console.error(err);
-        console.log("Prompt", messages);
         return { code: '', loggableCode: '' };
     } 
 };
