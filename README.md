@@ -1,8 +1,8 @@
 # AI My API
 
-Build AI assistants that use your API's and respond to natural language queries by writing small programs that are executed in a [QuickJS](https://github.com/justjake/quickjs-emscripten) sandbox.
-AIMyAPI writes the glue between your various API functions unlocking new functionality without having to write any code. With the right building blocks, AIMyAPI can even invent new functionality you didn't originally plan for - 
-for example, being able to sort or filter your data in new ways, email or text yourself results, or combine the results of different operations and API's.
+Build AI assistants that use your API's and respond to natural language queries by writing small programs that are executed in a [QuickJS](https://github.com/justjake/quickjs-emscripten) sandbox. Similar to chatGPT Code Interpreter but running on your servers and calling your own API.
+
+AIMyAPI writes the glue between your various API functions unlocking new functionality without having to write any code. With the right building blocks, AIMyAPI can even invent new functionality you didn't originally plan for - for example, being able to sort or filter your data in new ways, email or text yourself results, or combine the results of different operations and API's.
 
 Uses the OpenAI API and requires an API key. 
 
