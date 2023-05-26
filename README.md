@@ -45,12 +45,25 @@ declare global {
 
 ```
 
-Implement it:
+Implement it (`sales_api.ts`):
 ```
 export class API implements APIInterface {
 
     getSalesData() {
     ...
+```
+
+Document it (`sales_api.md`):
+
+```
+Examples of how you should respond:
+
+user: How are you today?
+
+assistant:
+\`\`\`
+api.print("I'm great, thanks for asking!");
+\`\`\`
 ```
 
 Instantiate your api and AIMyAPI. AIMyAPI will wrap your API so that it can be called from within the QuickJS sandbox.
