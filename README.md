@@ -45,7 +45,7 @@ declare global {
 
 ```
 
-Implement it (`sales_api.ts`):
+Implement it (`sales_api_impl.ts`):
 ```
 export class API implements APIInterface {
 
