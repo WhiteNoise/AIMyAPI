@@ -1,5 +1,6 @@
 import "quickjs-emscripten";
 
+import { QuickJSWASMModule } from "quickjs-emscripten";
 import * as ts from "typescript";
 import {
   injectTimingFunctions,
@@ -11,10 +12,10 @@ import {
 // Should we use "noEmitOnError": true ?
 function tsCompile(
   source: string,
-  options: ts.TranspileOptions = null
+  options?: ts.TranspileOptions
 ): string {
   // Default options -- you could also perform a merge, or use the project tsconfig.json
-  if (null === options) {
+  if (!options) {
     options = {
       compilerOptions: {
         target: ts.ScriptTarget.ES2020,
@@ -40,7 +41,7 @@ export interface Globals {
 
 // Is there some way we can treat the API and globals the same?
 // We could just provide an object for all globals (including the API) and also have the whitelist as a parameter..
-export default async function createSandbox(QuickJS, requireLookup:any = {}, globals: Globals = {}, debug:boolean = false) {
+export default async function createSandbox(QuickJS: QuickJSWASMModule, requireLookup:any = {}, globals: Globals = {}, debug:boolean = false) {
   const vm = QuickJS.newContext();
 
   let errorState = false;
@@ -68,14 +69,14 @@ export default async function createSandbox(QuickJS, requireLookup:any = {}, glo
 
   // assistantHandle.dispose();
 
-  const logHandle = vm.newFunction("log", (...args) => {
+  const logHandle = vm.newFunction("log", (...args:any) => {
     const nativeArgs = args.map(vm.dump);
     console.log("QuickJS Log:", ...nativeArgs);
   });
   const consoleHandle = vm.newObject();
   const exportsHandle = vm.newObject();
 
-  const errorHandle = vm.newFunction("error", (...args) => {
+  const errorHandle = vm.newFunction("error", (...args:any) => {
     try {
       const nativeArgs = args.map(vm.dump);
 

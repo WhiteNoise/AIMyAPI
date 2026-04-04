@@ -196,8 +196,8 @@ function injectTimingFunctions(vm, cbAddedTimer, cbRemovedTimer, maxTimeout = 6e
   _clearInterval.dispose();
 }
 
-function tsCompile(source, options = null) {
-  if (null === options) {
+function tsCompile(source, options) {
+  if (!options) {
     options = {
       compilerOptions: {
         target: ts.ScriptTarget.ES2020,
