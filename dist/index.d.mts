@@ -21,7 +21,7 @@ type CodeRunResult = {
 
 interface AIMyAPIOptions {
     apiObject: object;
-    apiExports: object;
+    apiExports?: object;
     apiWhitelist?: string[];
     apiGlobals?: object;
     apiDefFilePath: string;

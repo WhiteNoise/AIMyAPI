@@ -383,7 +383,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
 }
 
 require$1("dotenv").config();
-const openai = new OpenAI();
+const openai = new OpenAI({ baseURL: process.env.OPENAI_API_BASE_URL || void 0, apiKey: process.env.OPENAI_API_KEY || void 0 });
 let QuickJS = null;
 const wrapCode = (apiGlobalName, apiFileDefPath, code) => `
 (async () => {
@@ -568,9 +568,9 @@ async function createWithAPI(options) {
           };
         }
       }
-      const { vm, checkCode } = await createSandbox(QuickJS, {
+      const { vm, checkCode } = await createSandbox(QuickJS, apiExports ? {
         [apiDefFilePath]: apiExports
-      }, {
+      } : void 0, {
         ...apiGlobals,
         [apiGlobalName]: {
           value: apiObject,
@@ -627,9 +627,9 @@ async function createWithAPI(options) {
           };
         }
       }
-      const { vm, runCode: runTask, isAsyncProcessRunning } = await createSandbox(QuickJS, {
+      const { vm, runCode: runTask, isAsyncProcessRunning } = await createSandbox(QuickJS, apiExports ? {
         [apiDefFilePath]: apiExports
-      }, {
+      } : void 0, {
         ...apiGlobals,
         [apiGlobalName]: {
           value: apiObject,
