@@ -1,6 +1,6 @@
 {
   "name": "aimyapi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI My API! Typescript sandbox for AI agents to interact with your API in a safe way.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
