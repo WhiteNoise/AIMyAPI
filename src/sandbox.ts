@@ -35,6 +35,52 @@ export interface Globals {
   [key: string]: GlobalOption;
 }
 
+export type SandboxLog = { 
+  type: "log" | "error"; 
+  args: any[]; 
+  source: string 
+};
+export type CodeRunResult = {
+  success: boolean;
+  logs: SandboxLog[];
+}
+type LogSource = "sandbox" | "compiler" | "runner";
+class Logger {
+  logs: SandboxLog[] = [];
+  debug: boolean = false;
+
+  constructor(debug: boolean = false) {
+    this.debug = debug;
+  }
+  
+  log(args: any, source: LogSource) {
+    if(Array.isArray(args)) {
+      this.logs.push({ type: "log", args, source });
+    } else {      
+      this.logs.push({ type: "log", args: [args], source });
+    }
+    if (this.debug) {
+      console.log(`[${source}]:`, ...args);
+    }
+  }
+
+  error(args: any, source: LogSource) {
+    if(Array.isArray(args)) {
+      this.logs.push({ type: "error", args, source });
+    } else {
+      this.logs.push({ type: "error", args: [args], source });
+    }
+    
+    console.error(`[${source}]:`, ...args);
+  }
+
+  clear() {
+    this.logs = [];
+  }
+}
+
+
+
 // function whitelist can be produced using something like:
 // const assistantFunctions =  Object.getOwnPropertyNames(Object.getPrototypeOf(apiObject))
 //   .filter((f) => f !== "constructor" && !f.startsWith("_"));
@@ -64,6 +110,10 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
     return asyncProcessesRunning > 0;
   };
 
+  const logger = new Logger(debug);
+
+
+
   // const assistantHandle = wrapObjectWhitelist(vm, apiObject, functionWhitelist, beginAsyncProcess, endAsyncProcess);
   // vm.setProp(vm.global, apiGlobalName, assistantHandle)
 
@@ -71,7 +121,7 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
 
   const logHandle = vm.newFunction("log", (...args:any) => {
     const nativeArgs = args.map(vm.dump);
-    console.log("QuickJS Log:", ...nativeArgs);
+    logger.log(nativeArgs, "sandbox");
   });
   const consoleHandle = vm.newObject();
   const exportsHandle = vm.newObject();
@@ -80,11 +130,11 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
     try {
       const nativeArgs = args.map(vm.dump);
 
-      console.log("QuickJS console.error:", ...nativeArgs);
+      logger.error(nativeArgs, "sandbox");
       lastError = JSON.stringify(nativeArgs);
       errorState = true;
     } catch (e) {
-      console.log("Error in error:", e);
+      logger.error(["? Error in error:", e], "sandbox");
     }
   });
 
@@ -135,13 +185,42 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
       return lastError;
     },
     isAsyncProcessRunning,
-    runTask: (task: string): boolean => {
+    // make sure code passes the typescript compilation
+    checkCode: (code: string) => {
+      logger.clear();
       try {
-        const compiled = tsCompile(task);
+        const compiled = tsCompile(code);
+        if (!compiled || compiled.length === 0) {
+          logger.error(["Could not compile:", code], "compiler");
+          return {
+            success: false,
+            logs: logger.logs,
+          };
+        }        
+      } catch (e) {
+        logger.error(["Error testing code:", e], "compiler");
+        return {
+          success: false,
+          logs: logger.logs,
+        };
+      }
+
+      return {
+        success: true,
+        logs: logger.logs,
+      }
+    },
+    runCode: (code: string): CodeRunResult => {
+      try {
+        logger.clear();
+        const compiled = tsCompile(code);
 
         if (!compiled || compiled.length === 0) {
-          console.error("Could not compile", task);
-          return false;
+          logger.error(["Could not compile:", code], "compiler");
+          return {
+            success: false,
+            logs: logger.logs,
+          };
         }
 
         // View compiled typescript code for debugging
@@ -153,33 +232,46 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
 
         if (result.error) {
           // log out the compiled program with line numbers
-          const lines = compiled.split("\n");
-          for (let i = 0; i < lines.length; i++) {
-            console.log(`${i + 1}: ${lines[i]}`);
-          }
+          const lines = compiled.split("\n").map((line, index) => `${index + 1}: ${line}`);
 
-          console.log("Execution failed:", vm.dump(result.error));
+
+          logger.error(["Execution failed:", lines.join("\n"), vm.dump(result.error)], "runner");
 
           result.error.dispose();
-          return false;
-        } else {
+          return {
+            success: false,
+            logs: logger.logs,
+          };
+        } else if("value" in result){
           //console.log("Task Result:", vm.dump(result.value));
+
           result.value.dispose();
 
+          
           if (errorState) {
-            const lines = compiled.split("\n");
-            for (let i = 0; i < lines.length; i++) {
-              console.log(`${i + 1}: ${lines[i]}`);
-            }
+            const lines = compiled.split("\n").map((line, index) => `${index + 1}: ${line}`);
+            logger.error(["An error was reported during execution. Compiled code with line numbers:", lines.join("\n")], "runner");
           }
 
-          return !errorState;
+          return {
+            success: !errorState,
+            logs: logger.logs,
+          };
+        } else {
+          logger.error(["Unknown execution result:", result], "runner");
+          return {
+            success: false,
+            logs: logger.logs,
+          };
         }
       } catch (e) {
-        console.log(e);
+        logger.error(["Error running code:", e], "runner");
       }
 
-      return false;
+      return {
+        success: false,
+        logs: logger.logs,
+      };
     },
   };
 }

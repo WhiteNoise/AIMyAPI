@@ -51,7 +51,7 @@ export class API implements APIInterface {
     };
 
     print(text: string): void {
-        console.log(text);
+        console.log(`[API]: ${text}`);
     }
     delay(milliseconds: number): Promise<void> {
         return delay(milliseconds);

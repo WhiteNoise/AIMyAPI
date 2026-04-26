@@ -23,7 +23,7 @@ export interface APIInterface {
 
 };
 
-// Global object you will use for accessing the APIInterface
+// Global object for accessing the APIInterface
 declare global {
-    var api: APIInterface;
+    const salesApi: APIInterface;
 }

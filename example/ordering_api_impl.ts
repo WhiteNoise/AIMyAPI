@@ -7,7 +7,7 @@ import {
 	OrderingAPIInterface,
 } from "./ordering_api";
 
-// TODO: make functions to print out an item, and print out the current order with the price totals.
+// TODO: Typescript typing could be better on this API and it would probably benefit the agent.
 
 export class OrderingAPI implements OrderingAPIInterface {
 	private _order: MenuItemBase[] = [];
@@ -66,6 +66,7 @@ export class OrderingAPI implements OrderingAPIInterface {
 			throw new Error(`Item with name "${itemName}" not found`);
 		}
 
+		// FIXME: we shouldn't allow adding an item with customizations that aren't in the allowedCustomizations list for that item
 		const customizations = customizationNames ? customizationNames
 			.map((customizationName) => {
 				return this.getCustomizationByName(itemName, customizationName);

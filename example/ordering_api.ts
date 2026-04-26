@@ -184,7 +184,8 @@ export interface OrderingAPIInterface {
 
 };
 
-// Global object you will use for accessing the APIInterface
+// Global object for accessing the OrderingAPIInterface
 declare global {
-    var orderingApi: OrderingAPIInterface;
+    const orderingApi: OrderingAPIInterface;
+    const Menu: MenuItemBase[];
 }

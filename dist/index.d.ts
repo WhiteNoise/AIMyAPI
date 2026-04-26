@@ -1,13 +1,31 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { QuickJSWASMModule } from 'quickjs-emscripten';
+import { ZodSchema } from 'zod';
 
-declare function createBasePrompt(apiFilePath: string, documentationPath: string): string;
-interface GenerateCodeResult {
-    code: string;
-    loggableCode: string;
-    rawResponse?: string;
+interface GlobalOption {
+    value: any;
+    whitelist?: string[];
 }
-declare const generateCode: (queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug?: boolean, model?: string) => Promise<GenerateCodeResult>;
+interface Globals {
+    [key: string]: GlobalOption;
+}
+type SandboxLog = {
+    type: "log" | "error";
+    args: any[];
+    source: string;
+};
+type CodeRunResult = {
+    success: boolean;
+    logs: SandboxLog[];
+};
+
+declare function zodParseJSON<T>(schema: ZodSchema<T>): (input: string) => T;
+declare function createBasePrompt(apiFilePath: string, apiGlobalName: string, documentationPath?: string): string;
+interface GenerateCodeResult {
+    code?: string;
+    comments?: string;
+}
+declare const generateCode: (instance: AIMyAPIInstance, queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug?: boolean, model?: string, additionalModelOptions?: object) => Promise<GenerateCodeResult | null>;
 interface AIMyAPIOptions {
     apiObject: object;
     apiExports: object;
@@ -18,19 +36,21 @@ interface AIMyAPIOptions {
     apiDocsPath?: string;
     debug?: boolean;
     model?: string;
+    additionalModelOptions?: object;
 }
 interface AIMyAPIInstance {
     options: AIMyAPIOptions;
-    generateCode: (queryText: string, userChatHistory: ChatCompletionMessageParam[]) => Promise<GenerateCodeResult>;
-    runCode: (task: string) => Promise<void>;
-    processRequest: (userQuery: string, context?: object) => Promise<GenerateCodeResult>;
+    generateCode: (queryText: string, userChatHistory: ChatCompletionMessageParam[]) => Promise<GenerateCodeResult | null>;
+    runCode: (code: string) => Promise<CodeRunResult>;
+    checkCode: (code: string) => Promise<CodeRunResult>;
+    processRequest: (userQuery: string, context?: object) => Promise<GenerateCodeResult | null>;
 }
 interface AIMyAPIModuleExports {
     createWithAPI: (options: AIMyAPIOptions) => Promise<AIMyAPIInstance>;
     createBasePrompt: (apiFilePath: string, documentationPath: string) => string;
-    generateCode: (queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug: boolean) => Promise<GenerateCodeResult>;
+    generateCode: (instance: AIMyAPIInstance, queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug: boolean) => Promise<GenerateCodeResult | null>;
     createSandbox: (QuickJS: QuickJSWASMModule, globals: any) => Promise<any>;
 }
 declare const AIMyAPI: AIMyAPIModuleExports;
 
-export { AIMyAPI, type AIMyAPIInstance, type AIMyAPIModuleExports, type AIMyAPIOptions, type GenerateCodeResult, createBasePrompt, generateCode };
+export { AIMyAPI, type AIMyAPIInstance, type AIMyAPIModuleExports, type AIMyAPIOptions, type CodeRunResult, type GenerateCodeResult, type GlobalOption, type Globals, type SandboxLog, createBasePrompt, generateCode, zodParseJSON };

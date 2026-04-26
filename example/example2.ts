@@ -1,18 +1,22 @@
+// Note: This example is quite stupid and slow and you'd be better off using Tool calling for something like this, but I'm leaving it for demonstration purposes
+
 import path from "path";
-import { AIMyAPI, GenerateCodeResult } from "../src";
+import { AIMyAPI } from "../src";
 import * as APIExports from "./ordering_api";
 import { OrderingAPI } from "./ordering_api_impl";
 
 // More complex fast food ordering example that uses chat history.
 // Fast food ordering example.
 
-// IDEA: If the order history becomes too long, we could summarize it by listing the current order state and remove the rest.
 (async () => {
-    const api = new OrderingAPI();
+    const orderingApi = new OrderingAPI();
 
     const options = {
-        apiObject: api,
+        apiObject: orderingApi,
         apiGlobalName: "orderingApi",       // Should match whatever you declared as your global in your ordering api.
+        apiGlobals: {
+            Menu: APIExports.Menu,
+        },
         apiExports: APIExports,
         apiDefFilePath: path.join(__dirname, "./ordering_api.ts"),
         apiDocsPath: path.join(__dirname, "./ordering_api.md"),
@@ -24,22 +28,29 @@ import { OrderingAPI } from "./ordering_api_impl";
         console.log(`Query: ${query}`)
 
         // generate the code for this query
-        const codeResult:GenerateCodeResult = await aimyapi.generateCode(query, api._getHistory());
+        const codeResult = await aimyapi.generateCode(query, orderingApi._getHistory());
 
-        api._addMessageToHistory({
-            content: query,
-            role: "user",
-            name: "user",
-        });
+        if(codeResult) {
+            orderingApi._addMessageToHistory({
+                content: query,
+                role: "user",
+                name: "user",
+            });
 
-        api._addMessageToHistory({
-            content: '```\n' + codeResult.loggableCode + '\n```',
-            role: "assistant",
-            name: "assistant",
-        });
+            orderingApi._addMessageToHistory({
+                content: codeResult.comments || "done",
+                role: "assistant",
+                name: "assistant",
+            });
 
-        // run the code in the sandbox
-        await aimyapi.runCode(codeResult.code);
+            // run the code in the sandbox
+            if(codeResult.code) {
+                await aimyapi.runCode(codeResult.code);
+            }
+        } else {
+            console.error("No code generated for this query.");
+        }
+
     }
    
     await runQuery("How's the burger here?");

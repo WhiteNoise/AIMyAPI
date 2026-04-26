@@ -1,10 +1,5 @@
-Use `api.getSalesData()` to get the sales data array.
+## Examples:
 
-Examples of how you should respond:
+to print hello:
 
-user: How are you today?
-
-assistant:
-```
-api.print("I'm great, thanks for asking!");
-```
+submitCode("salesApi.print(\"Hello\")");
