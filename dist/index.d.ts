@@ -19,13 +19,6 @@ type CodeRunResult = {
     logs: SandboxLog[];
 };
 
-declare function zodParseJSON<T>(schema: ZodSchema<T>): (input: string) => T;
-declare function createBasePrompt(apiFilePath: string, apiGlobalName: string, documentationPath?: string): string;
-interface GenerateCodeResult {
-    code?: string;
-    comments?: string;
-}
-declare const generateCode: (instance: AIMyAPIInstance, queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug?: boolean, model?: string, additionalModelOptions?: object) => Promise<GenerateCodeResult | null>;
 interface AIMyAPIOptions {
     apiObject: object;
     apiExports: object;
@@ -37,6 +30,7 @@ interface AIMyAPIOptions {
     debug?: boolean;
     model?: string;
     additionalModelOptions?: object;
+    hideLogsFromAgent?: boolean;
 }
 interface AIMyAPIInstance {
     options: AIMyAPIOptions;
@@ -45,6 +39,13 @@ interface AIMyAPIInstance {
     checkCode: (code: string) => Promise<CodeRunResult>;
     processRequest: (userQuery: string, context?: object) => Promise<GenerateCodeResult | null>;
 }
+interface GenerateCodeResult {
+    code?: string;
+    comments?: string;
+}
+declare function zodParseJSON<T>(schema: ZodSchema<T>): (input: string) => T;
+declare function createBasePrompt(apiFilePath: string, apiGlobalName: string, documentationPath?: string): string;
+declare const generateCode: (instance: AIMyAPIInstance, queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug?: boolean, hideLogsFromAgent?: boolean, model?: string, additionalModelOptions?: object) => Promise<GenerateCodeResult | null>;
 interface AIMyAPIModuleExports {
     createWithAPI: (options: AIMyAPIOptions) => Promise<AIMyAPIInstance>;
     createBasePrompt: (apiFilePath: string, documentationPath: string) => string;

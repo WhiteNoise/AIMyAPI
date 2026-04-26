@@ -406,6 +406,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
 
 require$1("dotenv").config();
 const openai = new openai$1.OpenAI();
+let QuickJS = null;
 const wrapCode = (apiGlobalName, apiFileDefPath, code) => `
 (async () => {
     try {
@@ -414,6 +415,11 @@ const wrapCode = (apiGlobalName, apiFileDefPath, code) => `
         console.error(err); 
     }
 })();        
+`;
+const wrapCodeBlock = (code, codeType = "") => `
+\`\`\`${codeType}
+${code}
+\`\`\`
 `;
 function zodParseJSON(schema) {
   return (input) => schema.parse(JSON.parse(input));
@@ -433,7 +439,7 @@ const checkCodeSchema = zod.z.object({
 const submitCodeSchema = zod.z.object({
   code: zod.z.string()
 });
-const generateCode = async function(instance, queryText, userChatHistory, createTaskPrompt, debug = false, model = "gpt-5-mini", additionalModelOptions) {
+const generateCode = async function(instance, queryText, userChatHistory, createTaskPrompt, debug = false, hideLogsFromAgent = false, model = "gpt-5-mini", additionalModelOptions) {
   let finalSubmittedCode = "";
   if (debug) {
     console.log("Generating code for query:", queryText);
@@ -449,6 +455,9 @@ const generateCode = async function(instance, queryText, userChatHistory, create
             console.log("Running code...", code);
           }
           const res = await instance.runCode(code);
+          if (hideLogsFromAgent) {
+            res.logs = [];
+          }
           return res;
         },
         description: "Run the provided code in a sandboxed environment. The code will have access to the API object. Returns the result of the code execution.",
@@ -532,29 +541,40 @@ const generateCode = async function(instance, queryText, userChatHistory, create
     return null;
   }
 };
-let QuickJS = null;
 async function createWithAPI(options) {
-  options = {
-    apiGlobalName: "api",
-    apiGlobals: {},
-    apiWhitelist: Object.getOwnPropertyNames(Object.getPrototypeOf(options.apiObject)).filter((f) => f !== "constructor" && !f.startsWith("_")),
-    debug: false,
-    model: process.env.OPENAI_API_MODEL || "gpt-5.4-mini",
-    additionalModelOptions: {},
+  const localOptions = {
+    ...{
+      apiGlobalName: "api",
+      apiGlobals: {},
+      apiWhitelist: Object.getOwnPropertyNames(Object.getPrototypeOf(options.apiObject)).filter((f) => f !== "constructor" && !f.startsWith("_")),
+      debug: false,
+      model: process.env.OPENAI_API_MODEL || "gpt-5.4-mini",
+      additionalModelOptions: {},
+      hideLogsFromAgent: false
+    },
     ...options
   };
-  if (!options.apiObject || !options.apiDefFilePath || !options.apiGlobalName) {
-    throw new Error("apiObject, apiFilePath, and apiGlobalName are required");
+  if (!localOptions.apiObject || !localOptions.apiDefFilePath) {
+    throw new Error("apiObject and apiDefFilePath are required");
   }
-  const { apiObject, apiWhitelist, apiGlobalName, apiExports, apiDefFilePath, apiDocsPath, debug, model, additionalModelOptions } = options;
+  const { apiObject, apiWhitelist, apiGlobalName, apiExports, apiDefFilePath, apiDocsPath, debug, model, additionalModelOptions, hideLogsFromAgent } = localOptions;
   const createTaskPrompt = createBasePrompt(apiDefFilePath, apiGlobalName, apiDocsPath);
   const instance = {
-    options,
+    options: localOptions,
     generateCode: async function(queryText, userChatHistory, currentContext = void 0) {
       if (!queryText)
         return null;
-      const formattedContext = currentContext ? "```json\n" + JSON.stringify(currentContext, null, 2) + "```" : "";
-      return await generateCode(instance, queryText, userChatHistory, createTaskPrompt.replace("{{CONTEXT}}", formattedContext), debug, model, additionalModelOptions);
+      const formattedContext = wrapCodeBlock(JSON.stringify(currentContext, null, 2), "json");
+      return await generateCode(
+        instance,
+        queryText,
+        userChatHistory,
+        createTaskPrompt.replace("{{CONTEXT}}", formattedContext),
+        debug,
+        hideLogsFromAgent,
+        model,
+        additionalModelOptions
+      );
     },
     checkCode: async function(generatedCode) {
       if (!QuickJS) {
@@ -670,12 +690,22 @@ async function createWithAPI(options) {
         logs: []
       };
     },
+    // generates code and runs it in one step
     processRequest: async function(userQuery, currentContext = void 0) {
       if (debug) {
         console.log("Query:", userQuery);
       }
       console.time("Generate Task");
-      const generatedCode = await generateCode(instance, userQuery, [], createTaskPrompt.replace("{{CONTEXT}}", currentContext ? "```json\n" + JSON.stringify(currentContext, null, 2) + "```" : ""), debug, model, additionalModelOptions);
+      const generatedCode = await generateCode(
+        instance,
+        userQuery,
+        [],
+        createTaskPrompt.replace("{{CONTEXT}}", currentContext ? JSON.stringify(currentContext, null, 2) : ""),
+        debug,
+        hideLogsFromAgent,
+        model,
+        additionalModelOptions
+      );
       console.timeEnd("Generate Task");
       console.time("Run Code");
       if (generatedCode?.code) {
