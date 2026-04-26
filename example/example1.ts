@@ -1,6 +1,5 @@
 import path from "path";
 import { AIMyAPI } from "../src";
-import * as APIExports from "./sales_api";
 import { API } from "./sales_api_impl";
 
 // Simpler example using no support for chat history; 
@@ -11,7 +10,6 @@ import { API } from "./sales_api_impl";
     const aimyapi = await AIMyAPI.createWithAPI({
         apiObject: api,
         apiGlobalName: "salesApi", // Should match whatever you declared as your global in your api.
-        apiExports: APIExports,
         apiDefFilePath: path.join(__dirname, "./sales_api.ts"),
         apiDocsPath: path.join(__dirname, "./sales_api.md"),
         debug: false,

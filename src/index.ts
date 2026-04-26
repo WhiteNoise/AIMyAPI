@@ -13,13 +13,13 @@ import { AutoParseableTool } from 'openai/lib/parser.js';
 import { ZodSchema, z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-const openai = new OpenAI();
+const openai = new OpenAI( { baseURL: process.env.OPENAI_API_BASE_URL || undefined, apiKey: process.env.OPENAI_API_KEY || undefined } );
 
 let QuickJS:QuickJSWASMModule | null = null;
 
 export interface AIMyAPIOptions {
     apiObject: object;
-    apiExports: object;
+    apiExports?: object;
     apiWhitelist?: string[];      // List of functions to expose to the user. Necessary to pass this yourself if you are extending your api from another class.
     apiGlobals?: object;
     apiDefFilePath: string;     // Full path to the api definition file so that it can be loaded into the prompt
@@ -222,7 +222,7 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
             apiGlobals: {},
             apiWhitelist: Object.getOwnPropertyNames(Object.getPrototypeOf(options.apiObject)).filter((f) => f !== "constructor" && !f.startsWith("_")),
             debug: false, 
-            model: process.env.OPENAI_API_MODEL ||"gpt-5.4-mini",
+            model: process.env.OPENAI_API_MODEL || "gpt-5.4-mini",
             additionalModelOptions: {},
             hideLogsFromAgent: false,
         },
@@ -274,9 +274,9 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
             }
         
             // Create sandbox           
-            const {vm, checkCode} = await createSandbox(QuickJS, {
+            const {vm, checkCode} = await createSandbox(QuickJS, apiExports ? {
                 [apiDefFilePath]: apiExports,
-            }, { 
+            } : undefined, { 
                 ...apiGlobals,
                 [apiGlobalName]: {
                     value: apiObject,
@@ -348,9 +348,9 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
         
             // Create sandbox           
             // NOTE: not sure why I have to replace the backslash here
-            const {vm, runCode: runTask, isAsyncProcessRunning} = await createSandbox(QuickJS, {
+            const {vm, runCode: runTask, isAsyncProcessRunning} = await createSandbox(QuickJS, apiExports ? {
                 [apiDefFilePath]: apiExports,
-            }, { 
+            } : undefined, { 
                 ...apiGlobals,
                 [apiGlobalName]: {
                     value: apiObject,

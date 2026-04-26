@@ -2,7 +2,7 @@
 
 import path from "path";
 import { AIMyAPI } from "../src";
-import * as APIExports from "./ordering_api";
+import { Menu } from "./ordering_api";
 import { OrderingAPI } from "./ordering_api_impl";
 
 // More complex fast food ordering example that uses chat history.
@@ -15,9 +15,8 @@ import { OrderingAPI } from "./ordering_api_impl";
         apiObject: orderingApi,
         apiGlobalName: "orderingApi",       // Should match whatever you declared as your global in your ordering api.
         apiGlobals: {
-            Menu: APIExports.Menu,
+            Menu: Menu,
         },
-        apiExports: APIExports,
         apiDefFilePath: path.join(__dirname, "./ordering_api.ts"),
         apiDocsPath: path.join(__dirname, "./ordering_api.md"),
         debug: false,
