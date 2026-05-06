@@ -1,7 +1,6 @@
 require('dotenv').config()
 import fs from 'fs';
 import { OpenAI } from "openai";
-import path from 'path';
 
 import createSandbox, { CodeRunResult } from "./sandbox";
 import { rejectOpenPromises } from './sandbox-wrappers';
@@ -71,7 +70,7 @@ export function createBasePrompt(apiFilePath:string, apiGlobalName: string, docu
     const documentationText: string = documentationPath ? fs.readFileSync(documentationPath, 'utf8') : '';
 
     //console.time("Loading templates");
-    const createTaskPrompt: string = fs.readFileSync( path.join(__dirname, '../prompts/create-task-prompt.md'), 'utf8').replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText).replace("{{API_GLOBAL_NAME}}", apiGlobalName || "");   
+    const createTaskPrompt: string = fs.readFileSync( './prompts/create-task-prompt.md', 'utf8').replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText).replace("{{API_GLOBAL_NAME}}", apiGlobalName || "");   
     //console.timeEnd("Loading templates")
     
     return createTaskPrompt;

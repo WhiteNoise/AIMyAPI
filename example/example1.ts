@@ -1,4 +1,3 @@
-import path from "path";
 import { AIMyAPI } from "../src";
 import { API } from "./sales_api_impl";
 
@@ -10,8 +9,8 @@ import { API } from "./sales_api_impl";
     const aimyapi = await AIMyAPI.createWithAPI({
         apiObject: api,
         apiGlobalName: "salesApi", // Should match whatever you declared as your global in your api.
-        apiDefFilePath: path.join(__dirname, "./sales_api.ts"),
-        apiDocsPath: path.join(__dirname, "./sales_api.md"),
+        apiDefFilePath:  "./example/sales_api.ts",
+        apiDocsPath: "./example/sales_api.md",
         debug: false,
     })
 

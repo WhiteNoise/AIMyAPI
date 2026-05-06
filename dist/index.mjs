@@ -1,7 +1,6 @@
 import { createRequire } from 'module';
 import fs from 'fs';
 import { OpenAI } from 'openai';
-import path from 'path';
 import { getQuickJS } from 'quickjs-emscripten';
 import * as ts from 'typescript';
 import { z } from 'zod';
@@ -202,7 +201,7 @@ function tsCompile(source, options) {
   if (!options) {
     options = {
       compilerOptions: {
-        target: ts.ScriptTarget.ES2020,
+        target: ts.ScriptTarget.ES2022,
         module: ts.ModuleKind.None
       }
     };
@@ -358,7 +357,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
           result.value.dispose();
           if (errorState) {
             const lines = compiled.split("\n").map((line, index) => `${index + 1}: ${line}`);
-            logger.error(["An error was reported during execution. Compiled code with line numbers:", lines.join("\n")], "runner");
+            logger.error(["An error was reported during execution. Compiled code with line numbers:\n", lines.join("\n")], "runner");
           }
           return {
             success: !errorState,
@@ -405,7 +404,7 @@ function zodParseJSON(schema) {
 function createBasePrompt(apiFilePath, apiGlobalName, documentationPath) {
   const apiText = fs.readFileSync(apiFilePath, "utf8");
   const documentationText = documentationPath ? fs.readFileSync(documentationPath, "utf8") : "";
-  const createTaskPrompt = fs.readFileSync(path.join(__dirname, "../prompts/create-task-prompt.md"), "utf8").replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText).replace("{{API_GLOBAL_NAME}}", apiGlobalName || "");
+  const createTaskPrompt = fs.readFileSync("./prompts/create-task-prompt.md", "utf8").replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText).replace("{{API_GLOBAL_NAME}}", apiGlobalName || "");
   return createTaskPrompt;
 }
 const runCodeSchema = z.object({

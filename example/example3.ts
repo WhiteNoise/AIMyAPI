@@ -1,5 +1,4 @@
 
-import path from "path";
 import { AIMyAPI } from "../src";
 import { Menu } from "./ordering_api";
 import { OrderingAPI } from "./ordering_api_impl";
@@ -30,8 +29,8 @@ function getInput(query: string): Promise<string> {
         apiGlobals: {
             Menu: Menu,
         },
-        apiDefFilePath: path.join(__dirname, "./ordering_api.ts"),
-        apiDocsPath: path.join(__dirname, "./ordering_api.md"),
+        apiDefFilePath: "./example/ordering_api.ts",
+        apiDocsPath: "./example/ordering_api.md",
         debug: false,
     };
     const aimyapi = await AIMyAPI.createWithAPI(options)

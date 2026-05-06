@@ -6,9 +6,9 @@ Requires an OpenAI compatible API
 
 AIMyAPI will handle async operations and timers in your API object.
 
-## About version 1.0 rewrite and motivation
+## About version 1.0 update and motivation
 
-AIMyAPI was originally written at a time (circa ChatGPT 3.5 / GPT-4) before tool calling existed, before Claude code and codex and just before OpenAI released their code interpreter. LLM models have also gotten drastically better since. Some of the problems it originally aimed to solve are better solved today with simple tool calling. However, there is still a need to safely run small programs in a sandboxed way, reliable way. Tools are good if you have a set interface but there may be times that an agent needs to do some sorting or filtering, or an algorithm or analysis, or some repeatable workflow which isn't implemented by the available tool functions. Writing code allows the agent to do things it might not otherwise be able to do with tools alone. Having the ability to write code allows the tools API surface to be smaller; it could simply be a set of CRUD operations.
+AIMyAPI was originally written at a time (circa ChatGPT 3.5 / GPT-4) before tool calling existed, before Claude code and codex and just before OpenAI released their code interpreter. LLM models have also gotten drastically better since. Some of the problems it originally aimed to solve are better solved today with simple tool calling. However, there is still a need to safely run small programs in a sandboxed way, reliable way. Tools are good if you have a set interface but there may be times that an agent needs to do some sorting or filtering, or an algorithm or analysis, or some repeatable workflow which isn't implemented by the available tool functions. Writing code allows the agent to do things it might not otherwise be able to do with tools alone. All the AI models are thoroughly trained to write code do solve all kinds of problems. Having the ability to write code allows the tools API surface to be smaller; it could simply be a set of CRUD operations.
 
 The other advantage of writing code is privacy and security. When an agent executes code in a sandbox, it doesn't see any of the results*, API keys or other things you may want to keep hidden. When an agent uses tools, it sees all the parameters and results of the tool calls. Code can be audited for security and correctness before running it. Finally, code can encompass a series of operations, whereas tool calls need to be approved one at a time or just trusted, often without knowing what will come next.
 
@@ -89,8 +89,8 @@ const api = new API();
 const aimyapi = await AIMyAPI.createWithAPI({
     apiObject: api,
     apiExports: APIExports,
-    apiDefFilePath: path.join(__dirname, "./sales_api.ts"),
-    apiDocsPath: path.join(__dirname, "./sales_api.md"),
+    apiDefFilePath: "./sales_api.ts",
+    apiDocsPath: "./sales_api.md",
 })
 ```
 

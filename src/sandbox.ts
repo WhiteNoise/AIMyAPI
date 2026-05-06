@@ -18,7 +18,7 @@ function tsCompile(
   if (!options) {
     options = {
       compilerOptions: {
-        target: ts.ScriptTarget.ES2020,
+        target: ts.ScriptTarget.ES2022,
         module: ts.ModuleKind.None,
       },
     };
@@ -250,7 +250,7 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
           
           if (errorState) {
             const lines = compiled.split("\n").map((line, index) => `${index + 1}: ${line}`);
-            logger.error(["An error was reported during execution. Compiled code with line numbers:", lines.join("\n")], "runner");
+            logger.error(["An error was reported during execution. Compiled code with line numbers:\n", lines.join("\n")], "runner");
           }
 
           return {

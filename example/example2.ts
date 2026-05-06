@@ -1,6 +1,5 @@
 // Note: This example is quite stupid and slow and you'd be better off using Tool calling for something like this, but I'm leaving it for demonstration purposes
 
-import path from "path";
 import { AIMyAPI } from "../src";
 import { Menu } from "./ordering_api";
 import { OrderingAPI } from "./ordering_api_impl";
@@ -17,8 +16,8 @@ import { OrderingAPI } from "./ordering_api_impl";
         apiGlobals: {
             Menu: Menu,
         },
-        apiDefFilePath: path.join(__dirname, "./ordering_api.ts"),
-        apiDocsPath: path.join(__dirname, "./ordering_api.md"),
+        apiDefFilePath: "./example/ordering_api.ts",
+        apiDocsPath: "./example/ordering_api.md",
         debug: false,
     };
     const aimyapi = await AIMyAPI.createWithAPI(options)
