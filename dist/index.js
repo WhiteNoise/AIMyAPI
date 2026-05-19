@@ -504,7 +504,7 @@ const generateCode = async function(instance, queryText, userChatHistory, create
       messages: [
         {
           role: "system",
-          content: "You will assist with writing code to perform the user's request."
+          content: "You will assist with writing or modifying code based on the user's request."
         },
         ...userChatHistory,
         {

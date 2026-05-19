@@ -1,8 +1,8 @@
 
 Most recent user query: 
-```
 {{USER_QUERY}}
-```
+
+---
 
 Based on the above conversation, write a typescript script that performs the next operation requested by the user. 
 

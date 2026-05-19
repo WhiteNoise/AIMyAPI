@@ -504,7 +504,7 @@ const generateCode = async function(instance, queryText, userChatHistory, create
       messages: [
         {
           role: "system",
-          content: "You will assist with writing code to perform the user's request. You can call `runCode` to run code in a sandboxed environment that has access to the API object. You can call `checkCode` to check code for errors without running it. Call `submitCode` when you are ready to submit the final code to run."
+          content: "You will assist with writing or modifying code based on the user's request."
         },
         ...userChatHistory,
         {
