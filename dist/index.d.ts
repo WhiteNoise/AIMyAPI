@@ -40,12 +40,13 @@ interface AIMyAPIInstance {
     processRequest: (userQuery: string, context?: object) => Promise<GenerateCodeResult | null>;
 }
 interface GenerateCodeResult {
+    success: boolean;
     code?: string;
     comments?: string;
 }
 declare function zodParseJSON<T>(schema: ZodSchema<T>): (input: string) => T;
 declare function createBasePrompt(apiFilePath: string, apiGlobalName: string, documentationPath?: string): string;
-declare const generateCode: (instance: AIMyAPIInstance, queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug?: boolean, hideLogsFromAgent?: boolean, model?: string, additionalModelOptions?: object) => Promise<GenerateCodeResult | null>;
+declare const generateCode: (instance: AIMyAPIInstance, queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug?: boolean, hideLogsFromAgent?: boolean, model?: string, additionalModelOptions?: object, attempt?: number) => Promise<GenerateCodeResult | null>;
 interface AIMyAPIModuleExports {
     createWithAPI: (options: AIMyAPIOptions) => Promise<AIMyAPIInstance>;
     createBasePrompt: (apiFilePath: string, documentationPath: string) => string;
