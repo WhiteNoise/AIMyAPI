@@ -122,6 +122,10 @@ This example does not take advantage of the chat history and treats every reques
 
 APIs should be kept simple and understandable. If you have a complicated API you may want to write a simpler facade for it.
 
+### Limitations
+
+The sandbox implementation supports basic types and the built in objects Promise and Date. It doesn't currently support Map, Set, Regex, etc. So you cannot return those types from your API functions.
+
 
 ## API Reference for AIMyAPI
 
