@@ -12,6 +12,8 @@ export interface APIInterface {
 
     sendEmail(to: string, subject: string, body: string): Promise<void>;
 
+    getDate(): Date;
+
     getSalesData(): SalesData[];
     // Returns an array of sales data. 
 

@@ -14,7 +14,10 @@ import { API } from "./sales_api_impl";
         debug: false,
     })
 
-    aimyapi.runCode(`console.log("Hello from the sandbox! Here is some sales data:", salesApi.getSalesData())`);
+    await aimyapi.runCode(`await salesApi.print("Hello from the sandbox! Here is some sales data:");`);
+    
+    await aimyapi.runCode(`await salesApi.print(salesApi.getDate());`);
+    await aimyapi.runCode(`await salesApi.print(salesApi.getSalesData());`);
     
     console.log("Print 'hello' three times.")
     await aimyapi.processRequest("Print 'hello' three times.");

@@ -9,6 +9,10 @@ export class API implements APIInterface {
         return delay(1000);
     }
 
+    getDate() {
+        return new Date();
+    }
+
     getSalesData(): SalesData[] {
         return [
             { sales: 100, month: 1, year: 2020, businessUnit: "Advertising" },
@@ -50,9 +54,10 @@ export class API implements APIInterface {
         ]
     };
 
-    print(text: string): void {
-        console.log(`[API]: ${text}`);
+    print(): void {
+        console.log(`[API]:`, ...arguments);
     }
+
     delay(milliseconds: number): Promise<void> {
         return delay(milliseconds);
     }
