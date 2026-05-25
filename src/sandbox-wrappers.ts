@@ -61,6 +61,8 @@ export function wrap(vm, value: any, context: object,  beginAsyncProcess: () => 
   } else if (value === null) {
     //console.log("Wrapped null")
     return vm.null;
+  } else if (value instanceof Date) {
+    return vm.evalCode(`new Date(${value.getTime()})`).value;    
   } else if (typeof value === "object") {
     //console.log("Wrapped object")
     return wrapObject(vm, value, beginAsyncProcess, endAsyncProcess);

@@ -58,6 +58,8 @@ function wrap(vm, value, context, beginAsyncProcess, endAsyncProcess) {
     return wrapArray(vm, value, beginAsyncProcess, endAsyncProcess);
   } else if (value === null) {
     return vm.null;
+  } else if (value instanceof Date) {
+    return vm.evalCode(`new Date(${value.getTime()})`).value;
   } else if (typeof value === "object") {
     return wrapObject(vm, value, beginAsyncProcess, endAsyncProcess);
   } else if (typeof value === "string") {
