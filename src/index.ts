@@ -11,6 +11,7 @@ import { QuickJSWASMModule, getQuickJS } from "quickjs-emscripten";
 import { AutoParseableTool } from 'openai/lib/parser.js';
 import { ZodSchema, z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { check } from 'zod/v4';
 
 const openai = new OpenAI( { baseURL: process.env.OPENAI_API_BASE_URL || undefined, apiKey: process.env.OPENAI_API_KEY || undefined } );
 
@@ -40,6 +41,7 @@ export interface AIMyAPIInstance {
 }
 
 export interface GenerateCodeResult {
+    success: boolean;
     code?: string;
     comments?: string;
 }
@@ -89,12 +91,15 @@ const submitCodeSchema = z.object({
     code: z.string(),
 });
 
-export const generateCode = async function(instance:AIMyAPIInstance, queryText:string, userChatHistory:ChatCompletionMessageParam[], createTaskPrompt:string, debug:boolean = false, hideLogsFromAgent:boolean = false, model="gpt-5-mini", additionalModelOptions?: object): Promise<GenerateCodeResult | null> {
+// Basic harness for writing code for the sandbox.
+export const generateCode = async function(instance:AIMyAPIInstance, queryText:string, userChatHistory:ChatCompletionMessageParam[], createTaskPrompt:string, debug:boolean = false, hideLogsFromAgent:boolean = false, model="gpt-5-mini", additionalModelOptions?: object, attempt:number = 0): Promise<GenerateCodeResult | null> {
     let finalSubmittedCode = "";
 
     if(debug) {
         console.log("Generating code for query:", queryText);
     }
+
+    const newHistoryItems = [];
     // checkcode
     const codingTools: AutoParseableTool<any, true>[] = [
         {
@@ -143,7 +148,16 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
             function: {
                 name: "submitCode",
                 // @ts-ignore
-                function: async ({code}: {code: string}) => {   
+                function: async ({code}: {code: string}) => {
+                    const checkRes = await instance.checkCode(code);
+                    if(!checkRes.success) {
+                        return {
+                            success: false,
+                            reason: "Code check failed",
+                            logs: checkRes.logs,
+                        }
+                    }
+
                     finalSubmittedCode = code;
                     return {
                         success: true,
@@ -169,7 +183,7 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
             ...userChatHistory,
             {
                 role: 'user',
-                content: createTaskPrompt.replace("{{USER_QUERY}}", queryText)
+                content: attempt == 0 ? createTaskPrompt.replace("{{USER_QUERY}}", queryText) : queryText,
             },
 
           ],
@@ -180,8 +194,9 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
         .on('message', async (message: ChatCompletionMessageParam) => {
             if(debug) {
                 console.log("Message:", JSON.stringify(message, null, 2));
-
             }
+
+            newHistoryItems.push(message);
         })
         .on('functionToolCall', (functionCall: OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall.Function) => {
             if(debug) {
@@ -199,17 +214,41 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
       const finalContent = await runner.finalContent();
 
       if(debug) {
-        console.log("Final Content:", finalContent);
+        console.log("Generate code final response:", finalContent);
+      }
+
+      if(!finalSubmittedCode) {
+        console.error("No code was submitted by the agent.");
+        if(attempt < 3) {
+            return generateCode(instance, `You must call submitCode with valid code before proceeding. Attempt ${attempt + 1} of 3.`, [
+                ...userChatHistory, 
+                {
+                    role: 'user',
+                    content: attempt == 0 ? createTaskPrompt.replace("{{USER_QUERY}}", queryText) : queryText,
+                },
+                ...newHistoryItems
+            ], createTaskPrompt, debug, hideLogsFromAgent, model, additionalModelOptions, attempt + 1);
+        } else {
+            return {
+                success: false,
+                comments: "No code was submitted by the agent after multiple attempts. Final comment: " + finalContent,
+            }
+        }
+
       }
       
       return {
+        success: true,
         code: finalSubmittedCode,
         comments: finalContent || undefined,
       }
 
     } catch(err) {
         console.error(err);
-        return null;
+        return {
+            success: false,
+            comments: `Error generating code: ${err}`,
+        };
     }
 };
 

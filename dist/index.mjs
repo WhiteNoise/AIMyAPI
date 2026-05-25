@@ -418,11 +418,12 @@ const checkCodeSchema = z.object({
 const submitCodeSchema = z.object({
   code: z.string()
 });
-const generateCode = async function(instance, queryText, userChatHistory, createTaskPrompt, debug = false, hideLogsFromAgent = false, model = "gpt-5-mini", additionalModelOptions) {
+const generateCode = async function(instance, queryText, userChatHistory, createTaskPrompt, debug = false, hideLogsFromAgent = false, model = "gpt-5-mini", additionalModelOptions, attempt = 0) {
   let finalSubmittedCode = "";
   if (debug) {
     console.log("Generating code for query:", queryText);
   }
+  const newHistoryItems = [];
   const codingTools = [
     {
       type: "function",
@@ -467,6 +468,14 @@ const generateCode = async function(instance, queryText, userChatHistory, create
         name: "submitCode",
         // @ts-ignore
         function: async ({ code }) => {
+          const checkRes = await instance.checkCode(code);
+          if (!checkRes.success) {
+            return {
+              success: false,
+              reason: "Code check failed",
+              logs: checkRes.logs
+            };
+          }
           finalSubmittedCode = code;
           return {
             success: true
@@ -489,7 +498,7 @@ const generateCode = async function(instance, queryText, userChatHistory, create
         ...userChatHistory,
         {
           role: "user",
-          content: createTaskPrompt.replace("{{USER_QUERY}}", queryText)
+          content: attempt == 0 ? createTaskPrompt.replace("{{USER_QUERY}}", queryText) : queryText
         }
       ],
       tools: codingTools,
@@ -498,6 +507,7 @@ const generateCode = async function(instance, queryText, userChatHistory, create
       if (debug) {
         console.log("Message:", JSON.stringify(message, null, 2));
       }
+      newHistoryItems.push(message);
     }).on("functionToolCall", (functionCall) => {
       if (debug) {
         console.log("Function Call:", JSON.stringify(functionCall, null, 2));
@@ -509,15 +519,37 @@ const generateCode = async function(instance, queryText, userChatHistory, create
     });
     const finalContent = await runner.finalContent();
     if (debug) {
-      console.log("Final Content:", finalContent);
+      console.log("Generate code final response:", finalContent);
+    }
+    if (!finalSubmittedCode) {
+      console.error("No code was submitted by the agent.");
+      if (attempt < 3) {
+        return generateCode(instance, `You must call submitCode with valid code before proceeding. Attempt ${attempt + 1} of 3.`, [
+          ...userChatHistory,
+          {
+            role: "user",
+            content: attempt == 0 ? createTaskPrompt.replace("{{USER_QUERY}}", queryText) : queryText
+          },
+          ...newHistoryItems
+        ], createTaskPrompt, debug, hideLogsFromAgent, model, additionalModelOptions, attempt + 1);
+      } else {
+        return {
+          success: false,
+          comments: "No code was submitted by the agent after multiple attempts. Final comment: " + finalContent
+        };
+      }
     }
     return {
+      success: true,
       code: finalSubmittedCode,
       comments: finalContent || void 0
     };
   } catch (err) {
     console.error(err);
-    return null;
+    return {
+      success: false,
+      comments: `Error generating code: ${err}`
+    };
   }
 };
 async function createWithAPI(options) {
