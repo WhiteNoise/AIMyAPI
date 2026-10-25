@@ -2,6 +2,7 @@ import "quickjs-emscripten";
 
 import { QuickJSWASMModule } from "quickjs-emscripten";
 import * as ts from "typescript";
+import { Logger, SandboxLog } from "./logger";
 import {
   injectTimingFunctions,
   wrap,
@@ -34,51 +35,10 @@ export interface GlobalOption {
 export interface Globals {
   [key: string]: GlobalOption;
 }
-
-export type SandboxLog = { 
-  type: "log" | "error"; 
-  args: any[]; 
-  source: string 
-};
 export type CodeRunResult = {
   success: boolean;
   logs: SandboxLog[];
 }
-type LogSource = "sandbox" | "compiler" | "runner";
-class Logger {
-  logs: SandboxLog[] = [];
-  debug: boolean = false;
-
-  constructor(debug: boolean = false) {
-    this.debug = debug;
-  }
-  
-  log(args: any, source: LogSource) {
-    if(Array.isArray(args)) {
-      this.logs.push({ type: "log", args, source });
-    } else {      
-      this.logs.push({ type: "log", args: [args], source });
-    }
-    if (this.debug) {
-      console.log(`[${source}]:`, ...args);
-    }
-  }
-
-  error(args: any, source: LogSource) {
-    if(Array.isArray(args)) {
-      this.logs.push({ type: "error", args, source });
-    } else {
-      this.logs.push({ type: "error", args: [args], source });
-    }
-    
-    console.error(`[${source}]:`, ...args);
-  }
-
-  clear() {
-    this.logs = [];
-  }
-}
-
 
 
 // function whitelist can be produced using something like:
@@ -147,9 +107,10 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
           globalOption.value,
           globalOption.whitelist,
           beginAsyncProcess,
-          endAsyncProcess
+          endAsyncProcess,
+          logger
         )
-      : wrap(vm, globalOption.value, globalOption, beginAsyncProcess, endAsyncProcess);
+      : wrap(vm, globalOption.value, globalOption, beginAsyncProcess, endAsyncProcess, logger);
 
     vm.setProp(vm.global, globalNames[i], globalObj);
     globalObj.dispose();
@@ -160,7 +121,7 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
   const requireHandle = vm.newFunction("require", (...args) => {
     const nativeArgs = args.map(vm.dump);
     if(requireLookup[nativeArgs[0] as string]) {
-      const returnObj = wrapObject(vm, requireLookup[nativeArgs[0] as string], beginAsyncProcess, endAsyncProcess);
+      const returnObj = wrapObject(vm, requireLookup[nativeArgs[0] as string], beginAsyncProcess, endAsyncProcess, logger);
       return returnObj;
     } else {
       return vm.undefined;
@@ -194,23 +155,23 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
           logger.error(["Could not compile:", code], "compiler");
           return {
             success: false,
-            logs: logger.logs,
+            logs: logger.getLogs(),
           };
         }        
       } catch (e) {
         logger.error(["Error testing code:", e], "compiler");
         return {
           success: false,
-          logs: logger.logs,
+          logs: logger.getLogs(),
         };
       }
 
       return {
         success: true,
-        logs: logger.logs,
+        logs: logger.getLogs(),
       }
     },
-    runCode: (code: string): CodeRunResult => {
+    runCode: async (code: string): Promise<CodeRunResult> => {
       try {
         logger.clear();
         const compiled = tsCompile(code);
@@ -219,7 +180,7 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
           logger.error(["Could not compile:", code], "compiler");
           return {
             success: false,
-            logs: logger.logs,
+            logs: logger.getLogs()
           };
         }
 
@@ -234,20 +195,36 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
           // log out the compiled program with line numbers
           const lines = compiled.split("\n").map((line, index) => `${index + 1}: ${line}`);
 
-
           logger.error(["Execution failed:", lines.join("\n"), vm.dump(result.error)], "runner");
 
           result.error.dispose();
           return {
             success: false,
-            logs: logger.logs,
+            logs: logger.getPrettyLogs(),
           };
-        } else if("value" in result){
-          //console.log("Task Result:", vm.dump(result.value));
-
+        } else if("value" in result) {
+          //console.log("Task Result:", vm.dump(result.value), errorState);
+        // The wrapped code returns a promise; wait for it to settle.
+          const settled = vm.resolvePromise(result.value);
           result.value.dispose();
+          vm.runtime.executePendingJobs();   // start the async function running
+          const promiseResult = await settled;
 
+          if (promiseResult.error) {
+            const err = vm.dump(promiseResult.error);
+            promiseResult.error.dispose();
+            const lines = compiled.split("\n").map((l, i) => `${i + 1}: ${l}`);
+            logger.error(["Uncaught exception:", err, "\n", lines.join("\n")], "runner");
+            return { 
+              success: false, 
+              logs: logger.getPrettyLogs(),
+            };
+          }
+          // @ts-ignore this is a success response
+          promiseResult.value.dispose();
           
+          
+
           if (errorState) {
             const lines = compiled.split("\n").map((line, index) => `${index + 1}: ${line}`);
             logger.error(["An error was reported during execution. Compiled code with line numbers:\n", lines.join("\n")], "runner");
@@ -255,13 +232,13 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
 
           return {
             success: !errorState,
-            logs: logger.logs,
+            logs: logger.getPrettyLogs(),
           };
         } else {
           logger.error(["Unknown execution result:", result], "runner");
           return {
             success: false,
-            logs: logger.logs,
+            logs: logger.getPrettyLogs(),
           };
         }
       } catch (e) {
@@ -270,7 +247,7 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
 
       return {
         success: false,
-        logs: logger.logs,
+        logs: logger.getLogs(),
       };
     },
   };

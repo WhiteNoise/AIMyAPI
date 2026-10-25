@@ -1,11 +1,20 @@
+import z from "zod";
 import { delay } from "../src/utils";
 import { APIInterface, SalesData } from "./sales_api";
 
 export class API implements APIInterface {
 
+    // Schema validation for function parameters. Will throw if parameters are invalid to prevent silent failures and surface info to the agent.
+    public _params_sendEmail = z.object({
+        to: z.string(),
+        subject: z.string(),
+        body: z.string().min(5)
+    })
+
     // Mock implementation, doesn't actually send an email
-    sendEmail(to: string, subject: string, body: string): Promise<void> {
-        console.log(`Sending email to "${to}" with subject "${subject}" and body\n"${body}"`);
+    // fields should be defined in the same order that they occur in the function
+    async sendEmail(to: string, subject: string, body: string): Promise<void> {
+        console.log(`Successfully sent email to "${to}" with subject "${subject}" and body\n"${body}"`);
         return delay(1000);
     }
 
@@ -54,7 +63,7 @@ export class API implements APIInterface {
         ]
     };
 
-    print(): void {
+    display(): void {
         console.log(`[API]:`, ...arguments);
     }
 

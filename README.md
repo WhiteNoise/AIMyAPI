@@ -114,7 +114,7 @@ for (let i = 0; i < salesData.length; i++) {
         businessUnitWithMaxSales = salesData[i].businessUnit;
     }
 }
-api.print(\`The business unit with the highest sales in 2020 was ${businessUnitWithMaxSales}.\`);
+api.display(\`The business unit with the highest sales in 2020 was ${businessUnitWithMaxSales}.\`);
 
 ```
 
@@ -124,7 +124,28 @@ APIs should be kept simple and understandable. If you have a complicated API you
 
 ### Limitations
 
-The sandbox implementation supports basic types and the built in objects Promise and Date. It doesn't currently support Map, Set, Regex, etc. So you cannot return those types from your API functions.
+The sandbox implementation supports basic types and the built in objects Promise and Date. It doesn't currently support Map, Set, Regex, etc. So you cannot return those types from your API functions. Some Date functionality differs from current javascript specs.
+
+### Recommendations
+
+Create a separate sandbox with a mocked API for generating code. This way the agent doesn't modify anything while troubleshooting or running test scripts. Additionally it prevents the agent from ever seeing real data if you want to maintain privacy. Use the real API only when you want to run code.
+
+Implement schema validation for your API functions. Follow the convention by defining `_params_[FUNCTIONNAME]` as a Zod object:
+
+```ts
+// Schema validation for function parameters. Will throw if parameters are invalid to prevent silent failures and surface info to the agent.
+// fields should be defined in the same order that they occur in the function
+public _params_sendEmail = z.object({
+    to: z.string(),
+    subject: z.string(),
+    body: z.string().min(5)
+})
+
+// Mock implementation, doesn't actually send an email
+async sendEmail(to: string, subject: string, body: string): Promise<void> {
+    ...
+}
+```
 
 
 ## API Reference for AIMyAPI
@@ -179,11 +200,12 @@ export interface AIMyAPIInstance {
 - `generateCode()`: A function that generates code to be run in the sandbox for the given query text and user chat history.
 - `runCode()`: A function that runs the generated code in the sandbox.
 - `checkCode()`: Typecheck / compile the code
-- `processRequest()`: A single function that generates and runs code assuming no chat history.
+- `processRequest()`: A single function that generates and runs code assuming no chat history. This is more of a convenience function for the examples, since code gen and runn
 
 
 ## Safety notes:
 
+- When generating code, you should use a mocked version of your API. You can create separate sandboxes for writing code vs. running code.
 - If the user is giving sensitive information in a query, that information isn't private. Refer to the OpenAI policies and plan accordingly.
 - The LLM will do stupid things with your API. You should idiot proof your functions, make sure you sanity check any inputs, etc.
 - Even though we are running the code in sandbox, you should still treat anything coming back from the LLM as untrusted code.

@@ -1,5 +1,1 @@
-## Examples:
-
-to print hello:
-
-submitCode("salesApi.print(\"Hello\")");
+Use the `salesApi` global to make your api calls against.

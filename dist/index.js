@@ -6,7 +6,7 @@ var openai$1 = require('openai');
 var quickjsEmscripten = require('quickjs-emscripten');
 var ts = require('typescript');
 var zod = require('zod');
-var zodToJsonSchema = require('zod-to-json-schema');
+var path = require('path');
 
 var _documentCurrentScript = typeof document !== 'undefined' ? document.currentScript : null;
 function _interopNamespaceDefault(e) {
@@ -34,23 +34,104 @@ var require$1 = (
 				: require
 		);
 
+class Logger {
+  constructor(debug = false) {
+    this.logs = [];
+    this.debug = false;
+    this.debug = debug;
+  }
+  getLogs() {
+    return this.logs;
+  }
+  addEntry(type, args, source) {
+    if (Array.isArray(args)) {
+      this.logs.push({ type, args, source });
+    } else {
+      this.logs.push({ type, args: [args], source });
+    }
+  }
+  log(args, source) {
+    this.addEntry("log", args, source);
+    if (this.debug) {
+      console.log(`[${source}]:`, ...args);
+    }
+  }
+  trace(fnName, fnArgs, result) {
+    this.logs.push({ type: "trace", fnName, fnArgs, result });
+    if (this.debug) {
+      console.debug(`[sandbox]: ${fnName}(${fnArgs.map((arg) => JSON.stringify(Logger.limitObjectForLogs(arg))).join(",")}) -> ${JSON.stringify(Logger.limitObjectForLogs(result))}`);
+    }
+  }
+  error(args, source) {
+    this.addEntry("error", args, source);
+    if (this.debug) {
+      console.error(`[${source}]:`, ...args);
+    }
+  }
+  clear() {
+    this.logs = [];
+  }
+  getPrettyLogs() {
+    return this.logs.map((entry) => Logger.limitObjectForLogs(entry));
+  }
+  /**
+   * Returns a trimmed copy of `value` that is safe to log.
+   * - Objects/arrays nested deeper than `maxDepth` become "[Object]" / "[Array(n)]".
+   * - Arrays longer than `maxArrayItems` keep the first items plus a "+N more items" string.
+   * - Circular references become "[Circular]".
+   */
+  static limitObjectForLogs(value, maxDepth = 3, maxArrayItems = 5) {
+    const seen = /* @__PURE__ */ new WeakSet();
+    const trim = (val, depth) => {
+      if (val === null || typeof val !== "object") {
+        if (typeof val === "function") return `[Function${val.name ? `: ${val.name}` : ""}]`;
+        if (typeof val === "bigint") return `${val}n`;
+        if (typeof val === "symbol") return val.toString();
+        return val;
+      }
+      if (val instanceof Date) return val.toISOString();
+      if (val instanceof Error) {
+        return { name: val.name, message: val.message, stack: val.stack };
+      }
+      if (seen.has(val)) return "[Circular]";
+      if (depth >= maxDepth) {
+        return Array.isArray(val) ? `[Array(${val.length})]` : "[Object]";
+      }
+      seen.add(val);
+      let result;
+      if (Array.isArray(val)) {
+        result = val.slice(0, maxArrayItems).map((item) => trim(item, depth + 1));
+        if (val.length > maxArrayItems) {
+          result.push(`+${val.length - maxArrayItems} more items`);
+        }
+      } else {
+        result = {};
+        for (const key of Object.keys(val)) {
+          result[key] = trim(val[key], depth + 1);
+        }
+      }
+      seen.delete(val);
+      return result;
+    };
+    return trim(value, 0);
+  }
+}
+
 let promiseId = 0;
 let openPromises = {};
-function wrapPromise(vm, promise, beginAsyncProcess, endAsyncProcess) {
+function wrapPromise(vm, promise, beginAsyncProcess, endAsyncProcess, logger) {
   promiseId += 1;
   const vmPromise = vm.newPromise();
   vmPromise._promiseId = promiseId;
   beginAsyncProcess();
   promise.then((...args) => {
     endAsyncProcess();
-    const wrappedArgs = args.map((arg) => wrap(vm, arg, void 0, beginAsyncProcess, endAsyncProcess));
+    const wrappedArgs = args.map((arg) => wrap(vm, arg, void 0, beginAsyncProcess, endAsyncProcess, logger));
     openPromises[vmPromise._promiseId] = null;
     vmPromise.resolve(...wrappedArgs);
     wrappedArgs.forEach((arg) => arg.dispose());
-  }).catch((...args) => {
-    const wrappedArgs = args.map((arg) => wrap(vm, arg, void 0, beginAsyncProcess, endAsyncProcess));
-    vmPromise.reject(...wrappedArgs);
-    wrappedArgs.forEach((arg) => arg.dispose());
+  }).catch((error) => {
+    vmPromise.reject(vm.newError(error?.message || "An error occurred"));
     openPromises[vmPromise._promiseId] = null;
   });
   vmPromise.settled.then(() => {
@@ -69,21 +150,25 @@ function rejectOpenPromises(vm) {
   }
   vm.runtime.executePendingJobs();
 }
-function wrap(vm, value, context, beginAsyncProcess, endAsyncProcess) {
+const isPromise = (value) => {
+  return typeof value === "object" && typeof value.then === "function";
+};
+function wrap(vm, value, context, beginAsyncProcess, endAsyncProcess, logger) {
   if (value === null) {
     return null;
-  } else if (typeof value === "object" && typeof value.then === "function") {
-    return wrapPromise(vm, value, beginAsyncProcess, endAsyncProcess);
+  } else if (isPromise(value)) {
+    return wrapPromise(vm, value, beginAsyncProcess, endAsyncProcess, logger);
   } else if (typeof value === "function") {
-    return wrapGenericFunction(vm, value, context, beginAsyncProcess, endAsyncProcess);
+    return wrapGenericFunction(vm, value, context, beginAsyncProcess, endAsyncProcess, logger);
   } else if (Array.isArray(value)) {
-    return wrapArray(vm, value, beginAsyncProcess, endAsyncProcess);
+    return wrapArray(vm, value, beginAsyncProcess, endAsyncProcess, logger);
   } else if (value === null) {
     return vm.null;
   } else if (value instanceof Date) {
-    return vm.evalCode(`new Date(${value.getTime()})`).value;
+    const res = vm.evalCode(`new Date(${value.getTime()})`);
+    return quickjsEmscripten.isSuccess(res) ? res.value : null;
   } else if (typeof value === "object") {
-    return wrapObject(vm, value, beginAsyncProcess, endAsyncProcess);
+    return wrapObject(vm, value, beginAsyncProcess, endAsyncProcess, logger);
   } else if (typeof value === "string") {
     return vm.newString(value);
   } else if (typeof value === "number") {
@@ -91,17 +176,19 @@ function wrap(vm, value, context, beginAsyncProcess, endAsyncProcess) {
   } else if (typeof value === "bigint") {
     return vm.newBigInt(value);
   } else if (typeof value === "boolean") {
-    return vm.evalCode(value ? "true" : "false").value;
+    const res = vm.evalCode(value ? "true" : "false");
+    return quickjsEmscripten.isSuccess(res) ? res.value : null;
   } else if (typeof value === "undefined") {
     return vm.undefined;
   } else {
+    console.error("Unknown type", value);
     return null;
   }
 }
-function wrapObject(vm, obj, beginAsyncProcess, endAsyncProcess) {
+function wrapObject(vm, obj, beginAsyncProcess, endAsyncProcess, logger) {
   const vmObject = vm.newObject();
   for (const [key, value] of Object.entries(obj)) {
-    let wrappedValue = wrap(vm, value, obj, beginAsyncProcess, endAsyncProcess);
+    let wrappedValue = wrap(vm, value, obj, beginAsyncProcess, endAsyncProcess, logger);
     if (wrappedValue !== null) {
       vm.setProp(vmObject, key, wrappedValue);
       if (wrappedValue != vm.undefined && wrappedValue != vm.null && wrappedValue.dispose) {
@@ -111,11 +198,11 @@ function wrapObject(vm, obj, beginAsyncProcess, endAsyncProcess) {
   }
   return vmObject;
 }
-function wrapObjectWhitelist(vm, obj, whitelist, beginAsyncProcess, endAsyncProcess) {
+function wrapObjectWhitelist(vm, obj, whitelist, beginAsyncProcess, endAsyncProcess, logger) {
   const vmObject = vm.newObject();
   whitelist.forEach((key) => {
     const value = obj[key];
-    const wrappedValue = wrap(vm, value, obj, beginAsyncProcess, endAsyncProcess);
+    const wrappedValue = wrap(vm, value, obj, beginAsyncProcess, endAsyncProcess, logger);
     if (wrappedValue !== null) {
       vm.setProp(vmObject, key, wrappedValue);
       if (wrappedValue != vm.undefined && wrappedValue != vm.null && wrappedValue.dispose) {
@@ -125,10 +212,10 @@ function wrapObjectWhitelist(vm, obj, whitelist, beginAsyncProcess, endAsyncProc
   });
   return vmObject;
 }
-function wrapArray(vm, arr, beginAsyncProcess, endAsyncProcess) {
+function wrapArray(vm, arr, beginAsyncProcess, endAsyncProcess, logger) {
   const vmArray = vm.newArray();
   for (let i = 0; i < arr.length; i++) {
-    let wrappedValue = wrap(vm, arr[i], arr, beginAsyncProcess, endAsyncProcess);
+    let wrappedValue = wrap(vm, arr[i], arr, beginAsyncProcess, endAsyncProcess, logger);
     vm.setProp(vmArray, i, wrappedValue);
     if (wrappedValue != vm.undefined && wrappedValue != vm.null) {
       wrappedValue.dispose();
@@ -136,15 +223,47 @@ function wrapArray(vm, arr, beginAsyncProcess, endAsyncProcess) {
   }
   return vmArray;
 }
-function wrapGenericFunction(vm, fn, context = void 0, beginAsyncProcess, endAsyncProcess) {
+function validationDecorator(schema) {
+  return function(...args) {
+    let argumentObject = {};
+    const params = Object.keys(schema.def.shape);
+    args.forEach((value, index) => {
+      if (index < params.length) {
+        argumentObject[params[index]] = value;
+      }
+    });
+    schema.parse(argumentObject);
+  };
+}
+function wrapGenericFunction(vm, fn, context = void 0, beginAsyncProcess, endAsyncProcess, logger) {
   const vmFn = vm.newFunction(fn.name, (...args) => {
     const unwrappedArgs = args.map(vm.dump);
     try {
+      const validatorName = `_params_${fn.name}`;
+      const hasValidator = context != void 0 && validatorName in context && "parse" in context[validatorName];
+      if (hasValidator) {
+        const schema = context[validatorName];
+        try {
+          const validator = validationDecorator(schema);
+          validator(...unwrappedArgs);
+        } catch (e) {
+          if (e instanceof zod.ZodError) {
+            throw new Error(`Parameter validation failed for function "${fn.name}". Expected Parameters: [${Object.keys(schema.def.shape).join(",")}]. Errors:
+${zod.z.prettifyError(e)}`);
+          }
+          throw new Error(`Parameter validation error calling ${fn.name}`);
+        }
+      }
       const result = fn.call(context, ...unwrappedArgs);
-      const wrappedResult = wrap(vm, result, void 0, beginAsyncProcess, endAsyncProcess);
+      logger.trace(fn.name, unwrappedArgs, result);
+      const wrappedResult = wrap(vm, result, void 0, beginAsyncProcess, endAsyncProcess, logger);
       return wrappedResult;
     } catch (e) {
-      console.log("Error", e);
+      logger.error([e], "sandbox");
+      if (e instanceof Error) {
+        throw e;
+      }
+      throw new Error("An exception occurred calling " + fn.name);
     }
   });
   return vmFn;
@@ -232,34 +351,6 @@ function tsCompile(source, options) {
   }
   return ts__namespace.transpileModule(source, options).outputText;
 }
-class Logger {
-  constructor(debug = false) {
-    this.logs = [];
-    this.debug = false;
-    this.debug = debug;
-  }
-  log(args, source) {
-    if (Array.isArray(args)) {
-      this.logs.push({ type: "log", args, source });
-    } else {
-      this.logs.push({ type: "log", args: [args], source });
-    }
-    if (this.debug) {
-      console.log(`[${source}]:`, ...args);
-    }
-  }
-  error(args, source) {
-    if (Array.isArray(args)) {
-      this.logs.push({ type: "error", args, source });
-    } else {
-      this.logs.push({ type: "error", args: [args], source });
-    }
-    console.error(`[${source}]:`, ...args);
-  }
-  clear() {
-    this.logs = [];
-  }
-}
 async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = false) {
   const vm = QuickJS.newContext();
   let errorState = false;
@@ -301,8 +392,9 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
       globalOption.value,
       globalOption.whitelist,
       beginAsyncProcess,
-      endAsyncProcess
-    ) : wrap(vm, globalOption.value, globalOption, beginAsyncProcess, endAsyncProcess);
+      endAsyncProcess,
+      logger
+    ) : wrap(vm, globalOption.value, globalOption, beginAsyncProcess, endAsyncProcess, logger);
     vm.setProp(vm.global, globalNames[i], globalObj);
     globalObj.dispose();
   }
@@ -310,7 +402,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
   const requireHandle = vm.newFunction("require", (...args) => {
     const nativeArgs = args.map(vm.dump);
     if (requireLookup[nativeArgs[0]]) {
-      const returnObj = wrapObject(vm, requireLookup[nativeArgs[0]], beginAsyncProcess, endAsyncProcess);
+      const returnObj = wrapObject(vm, requireLookup[nativeArgs[0]], beginAsyncProcess, endAsyncProcess, logger);
       return returnObj;
     } else {
       return vm.undefined;
@@ -341,22 +433,22 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
           logger.error(["Could not compile:", code], "compiler");
           return {
             success: false,
-            logs: logger.logs
+            logs: logger.getLogs()
           };
         }
       } catch (e) {
         logger.error(["Error testing code:", e], "compiler");
         return {
           success: false,
-          logs: logger.logs
+          logs: logger.getLogs()
         };
       }
       return {
         success: true,
-        logs: logger.logs
+        logs: logger.getLogs()
       };
     },
-    runCode: (code) => {
+    runCode: async (code) => {
       try {
         logger.clear();
         const compiled = tsCompile(code);
@@ -364,7 +456,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
           logger.error(["Could not compile:", code], "compiler");
           return {
             success: false,
-            logs: logger.logs
+            logs: logger.getLogs()
           };
         }
         errorState = false;
@@ -375,23 +467,37 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
           result.error.dispose();
           return {
             success: false,
-            logs: logger.logs
+            logs: logger.getPrettyLogs()
           };
         } else if ("value" in result) {
+          const settled = vm.resolvePromise(result.value);
           result.value.dispose();
+          vm.runtime.executePendingJobs();
+          const promiseResult = await settled;
+          if (promiseResult.error) {
+            const err = vm.dump(promiseResult.error);
+            promiseResult.error.dispose();
+            const lines = compiled.split("\n").map((l, i) => `${i + 1}: ${l}`);
+            logger.error(["Uncaught exception:", err, "\n", lines.join("\n")], "runner");
+            return {
+              success: false,
+              logs: logger.getPrettyLogs()
+            };
+          }
+          promiseResult.value.dispose();
           if (errorState) {
             const lines = compiled.split("\n").map((line, index) => `${index + 1}: ${line}`);
             logger.error(["An error was reported during execution. Compiled code with line numbers:\n", lines.join("\n")], "runner");
           }
           return {
             success: !errorState,
-            logs: logger.logs
+            logs: logger.getPrettyLogs()
           };
         } else {
           logger.error(["Unknown execution result:", result], "runner");
           return {
             success: false,
-            logs: logger.logs
+            logs: logger.getPrettyLogs()
           };
         }
       } catch (e) {
@@ -399,7 +505,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
       }
       return {
         success: false,
-        logs: logger.logs
+        logs: logger.getLogs()
       };
     }
   };
@@ -408,13 +514,12 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
 require$1("dotenv").config();
 const openai = new openai$1.OpenAI({ baseURL: process.env.OPENAI_API_BASE_URL || void 0, apiKey: process.env.OPENAI_API_KEY || void 0 });
 let QuickJS = null;
+function createLog(message, source) {
+  return { type: "log", args: [message], source };
+}
 const wrapCode = (apiGlobalName, apiFileDefPath, code) => `
 (async () => {
-    try {
-        ${code}
-    } catch(err) { 
-        console.error(err); 
-    }
+${code}
 })();        
 `;
 const wrapCodeBlock = (code, codeType = "") => `
@@ -428,13 +533,13 @@ function zodParseJSON(schema) {
 function createBasePrompt(apiFilePath, apiGlobalName, documentationPath) {
   const apiText = fs.readFileSync(apiFilePath, "utf8");
   const documentationText = documentationPath ? fs.readFileSync(documentationPath, "utf8") : "";
-  const createTaskPrompt = fs.readFileSync("./prompts/create-task-prompt.md", "utf8").replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText).replace("{{API_GLOBAL_NAME}}", apiGlobalName || "");
+  const createTaskPrompt = fs.readFileSync(path.resolve(__dirname, "../prompts/generate-code-prompt.md"), "utf8").replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText).replace("{{API_GLOBAL_NAME}}", apiGlobalName || "");
   return createTaskPrompt;
 }
 const runCodeSchema = zod.z.object({
   code: zod.z.string()
 });
-const checkCodeSchema = zod.z.object({
+zod.z.object({
   code: zod.z.string()
 });
 const submitCodeSchema = zod.z.object({
@@ -456,34 +561,42 @@ const generateCode = async function(instance, queryText, userChatHistory, create
           if (debug) {
             console.log("Running code...", code);
           }
+          const checkRes = await instance.checkCode(code);
+          if (!checkRes.success) {
+            return {
+              success: false,
+              reason: "Code check failed",
+              logs: checkRes.logs
+            };
+          }
           const res = await instance.runCode(code);
           if (hideLogsFromAgent) {
             res.logs = [];
           }
           return res;
         },
-        description: "Run the provided code in a sandboxed environment. The code will have access to the API object. Returns the result of the code execution.",
+        description: "Check and run the provided code in a sandboxed environment. The code will have access to the API object. Returns the result of the code execution. Use this for testing and experimentation.",
         parse: zodParseJSON(runCodeSchema),
-        parameters: zodToJsonSchema.zodToJsonSchema(runCodeSchema)
+        parameters: runCodeSchema.toJSONSchema()
       }
     },
-    {
-      type: "function",
-      function: {
-        name: "checkCode",
-        // @ts-ignore
-        function: async ({ code }) => {
-          if (debug) {
-            console.log("Checking code...", code);
-          }
-          const res = await instance.checkCode(code);
-          return res;
-        },
-        description: "Check the provided code for errors or issues without running it. Returns the result of the code check.",
-        parse: zodParseJSON(checkCodeSchema),
-        parameters: zodToJsonSchema.zodToJsonSchema(checkCodeSchema)
-      }
-    },
+    // {
+    //     type: "function",
+    //     function: {
+    //         name: "checkCode",
+    //         // @ts-ignore
+    //         function: async ({code}: {code: string}) => {   
+    //             if(debug) {
+    //                 console.log("Checking code...", code);                 
+    //             }
+    //             const res = await instance.checkCode(code);
+    //             return res;
+    //         },
+    //         description: "Check the provided code for errors or issues without running it. Returns the result of the code check.",
+    //         parse: zodParseJSON(checkCodeSchema),
+    //         parameters: checkCodeSchema.toJSONSchema(),
+    //     }
+    // },        
     {
       type: "function",
       function: {
@@ -498,14 +611,18 @@ const generateCode = async function(instance, queryText, userChatHistory, create
               logs: checkRes.logs
             };
           }
-          finalSubmittedCode = code;
-          return {
-            success: true
-          };
+          const res = await instance.runCode(code);
+          if (hideLogsFromAgent) {
+            res.logs = [];
+          }
+          if (res.success) {
+            finalSubmittedCode = code;
+          }
+          return res;
         },
-        description: "Submit the provided code as the final code to run. This will end the code generation process and the code will be run in the sandbox. Use this when you are confident in the code you have generated and want to run it.",
+        description: "Submit the provided code as a candidate for the final code. The code will be checked and run and output logs and traces will be provided. Check the logs, if satisifed, respond to the user otherwise submit again.",
         parse: zodParseJSON(submitCodeSchema),
-        parameters: zodToJsonSchema.zodToJsonSchema(submitCodeSchema)
+        parameters: submitCodeSchema.toJSONSchema()
       }
     }
   ];
@@ -527,17 +644,13 @@ const generateCode = async function(instance, queryText, userChatHistory, create
       ...additionalModelOptions
     }).on("message", async (message) => {
       if (debug) {
-        console.log("Message:", JSON.stringify(message, null, 2));
+        if ("reasoning_content" in message) {
+          console.log(message.reasoning_content);
+        }
       }
       newHistoryItems.push(message);
     }).on("functionToolCall", (functionCall) => {
-      if (debug) {
-        console.log("Function Call:", JSON.stringify(functionCall, null, 2));
-      }
     }).on("functionToolCallResult", (functionCall) => {
-      if (debug) {
-        console.log("Function Call Result:", JSON.stringify(functionCall, null, 2));
-      }
     });
     const finalContent = await runner.finalContent();
     if (debug) {
@@ -641,7 +754,7 @@ async function createWithAPI(options) {
           console.error("Unknown failure checking code");
           return {
             success: false,
-            logs: []
+            logs: [createLog("Unknown failure checking code", "compiler")]
           };
         }
         if (debug) {
@@ -682,7 +795,7 @@ async function createWithAPI(options) {
           };
         }
       }
-      const { vm, runCode: runTask, isAsyncProcessRunning } = await createSandbox(QuickJS, apiExports ? {
+      const { vm, runCode: sandbox_runCode, isAsyncProcessRunning } = await createSandbox(QuickJS, apiExports ? {
         [apiDefFilePath]: apiExports
       } : void 0, {
         ...apiGlobals,
@@ -695,7 +808,7 @@ async function createWithAPI(options) {
         if (debug) {
           console.log("Running Code:\n", code);
         }
-        const res = await runTask(wrapCode(apiGlobalName, apiDefFilePath, code));
+        const res = await sandbox_runCode(wrapCode(apiGlobalName, apiDefFilePath, code));
         if (!res) {
           console.error("Unknown failure running task");
           return {
@@ -726,27 +839,35 @@ async function createWithAPI(options) {
     // generates code and runs it in one step
     processRequest: async function(userQuery, currentContext = void 0) {
       if (debug) {
-        console.log("Query:", userQuery);
+        console.log("[debug] Query:", userQuery);
       }
       console.time("Generate Task");
+      const prompt = createTaskPrompt.replace("{{CONTEXT}}", currentContext ? JSON.stringify(currentContext, null, 2) : "");
       const generatedCode = await generateCode(
         instance,
         userQuery,
         [],
-        createTaskPrompt.replace("{{CONTEXT}}", currentContext ? JSON.stringify(currentContext, null, 2) : ""),
+        prompt,
         debug,
         hideLogsFromAgent,
         model,
         additionalModelOptions
       );
       console.timeEnd("Generate Task");
-      console.time("Run Code");
+      console.log(`generated code result
+Success?: ${generatedCode?.success}
+Comments: ${generatedCode?.comments}
+Running Code...`);
+      console.time("Run Code took");
       if (generatedCode?.code) {
-        await instance.runCode(generatedCode.code);
+        const codeRunResult = await instance.runCode(generatedCode.code);
+        if (!codeRunResult.success) {
+          console.error("Error running generated code");
+        }
       } else {
         console.error("No code generated", generatedCode);
       }
-      console.timeEnd("Run Code");
+      console.timeEnd("Run Code took");
       return generatedCode;
     }
   };

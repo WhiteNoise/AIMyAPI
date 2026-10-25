@@ -1,6 +1,17 @@
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { QuickJSWASMModule } from 'quickjs-emscripten';
-import { ZodSchema } from 'zod';
+
+type LogSource = "sandbox" | "compiler" | "runner";
+type SandboxLog = {
+    type: "log" | "error";
+    args: any[];
+    source: LogSource;
+} | {
+    type: "trace";
+    fnName: string;
+    fnArgs: any[];
+    result: any;
+};
 
 interface GlobalOption {
     value: any;
@@ -9,11 +20,6 @@ interface GlobalOption {
 interface Globals {
     [key: string]: GlobalOption;
 }
-type SandboxLog = {
-    type: "log" | "error";
-    args: any[];
-    source: string;
-};
 type CodeRunResult = {
     success: boolean;
     logs: SandboxLog[];
@@ -44,7 +50,9 @@ interface GenerateCodeResult {
     code?: string;
     comments?: string;
 }
-declare function zodParseJSON<T>(schema: ZodSchema<T>): (input: string) => T;
+declare function zodParseJSON<T>(schema: {
+    parse: any;
+}): (input: string) => T;
 declare function createBasePrompt(apiFilePath: string, apiGlobalName: string, documentationPath?: string): string;
 declare const generateCode: (instance: AIMyAPIInstance, queryText: string, userChatHistory: ChatCompletionMessageParam[], createTaskPrompt: string, debug?: boolean, hideLogsFromAgent?: boolean, model?: string, additionalModelOptions?: object, attempt?: number) => Promise<GenerateCodeResult | null>;
 interface AIMyAPIModuleExports {
@@ -55,4 +63,4 @@ interface AIMyAPIModuleExports {
 }
 declare const AIMyAPI: AIMyAPIModuleExports;
 
-export { AIMyAPI, type AIMyAPIInstance, type AIMyAPIModuleExports, type AIMyAPIOptions, type CodeRunResult, type GenerateCodeResult, type GlobalOption, type Globals, type SandboxLog, createBasePrompt, generateCode, zodParseJSON };
+export { AIMyAPI, type AIMyAPIInstance, type AIMyAPIModuleExports, type AIMyAPIOptions, type CodeRunResult, type GenerateCodeResult, type GlobalOption, type Globals, createBasePrompt, generateCode, zodParseJSON };

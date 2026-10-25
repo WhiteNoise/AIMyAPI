@@ -2,16 +2,17 @@ require('dotenv').config()
 import fs from 'fs';
 import { OpenAI } from "openai";
 
+import { LogSource, SandboxLog } from "./logger";
 import createSandbox, { CodeRunResult } from "./sandbox";
 import { rejectOpenPromises } from './sandbox-wrappers';
 
 import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
-import { QuickJSWASMModule, getQuickJS } from "quickjs-emscripten";
+import { getQuickJS, QuickJSWASMModule } from "quickjs-emscripten";
 
 import { AutoParseableTool } from 'openai/lib/parser.js';
-import { ZodSchema, z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
-import { check } from 'zod/v4';
+import { z } from 'zod';
+
+import path from 'path';
 
 const openai = new OpenAI( { baseURL: process.env.OPENAI_API_BASE_URL || undefined, apiKey: process.env.OPENAI_API_KEY || undefined } );
 
@@ -46,14 +47,13 @@ export interface GenerateCodeResult {
     comments?: string;
 }
 
+function createLog( message: string, source: LogSource) {
+    return { type: "log", args: [message], source } as SandboxLog
+}
 
 const wrapCode = (apiGlobalName:string, apiFileDefPath:string, code:string) => `
 (async () => {
-    try {
-        ${code}
-    } catch(err) { 
-        console.error(err); 
-    }
+${code}
 })();        
 `;
 
@@ -63,7 +63,7 @@ ${code}
 \`\`\`
 `;
 
-export function zodParseJSON<T>(schema: ZodSchema<T>) {
+export function zodParseJSON<T>(schema: { parse: any }) {
   return (input: string): T => schema.parse(JSON.parse(input));
 }
 
@@ -72,7 +72,7 @@ export function createBasePrompt(apiFilePath:string, apiGlobalName: string, docu
     const documentationText: string = documentationPath ? fs.readFileSync(documentationPath, 'utf8') : '';
 
     //console.time("Loading templates");
-    const createTaskPrompt: string = fs.readFileSync( './prompts/create-task-prompt.md', 'utf8').replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText).replace("{{API_GLOBAL_NAME}}", apiGlobalName || "");   
+    const createTaskPrompt: string = fs.readFileSync( path.resolve(__dirname, '../prompts/generate-code-prompt.md'), 'utf8').replace("{{DOCUMENTATION}}", documentationText).replace("{{API}}", apiText).replace("{{API_GLOBAL_NAME}}", apiGlobalName || "");   
     //console.timeEnd("Loading templates")
     
     return createTaskPrompt;
@@ -99,7 +99,7 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
         console.log("Generating code for query:", queryText);
     }
 
-    const newHistoryItems = [];
+    const newHistoryItems: any[] = [];
     // checkcode
     const codingTools: AutoParseableTool<any, true>[] = [
         {
@@ -111,7 +111,15 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
                     if(debug) {
                         console.log("Running code...", code);                 
                     }
-                    
+                    const checkRes = await instance.checkCode(code);
+                    if(!checkRes.success) {
+                        return {
+                            success: false,
+                            reason: "Code check failed",
+                            logs: checkRes.logs,
+                        }
+                    }
+
                     const res = await instance.runCode(code);
 
                     if(hideLogsFromAgent) {
@@ -119,30 +127,30 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
                     }
                     return res;
                 },
-                description: "Run the provided code in a sandboxed environment. The code will have access to the API object. Returns the result of the code execution.",
+                description: "Check and run the provided code in a sandboxed environment. The code will have access to the API object. Returns the result of the code execution. Use this for testing and experimentation.",
                 parse: zodParseJSON(runCodeSchema),
-                parameters: zodToJsonSchema(runCodeSchema),            
+                parameters: runCodeSchema.toJSONSchema(),
             }
         },
-        {
-            type: "function",
-            function: {
-                name: "checkCode",
-                // @ts-ignore
-                function: async ({code}: {code: string}) => {   
-                    if(debug) {
-                        console.log("Checking code...", code);                 
-                    }
-                    const res = await instance.checkCode(code);
+        // {
+        //     type: "function",
+        //     function: {
+        //         name: "checkCode",
+        //         // @ts-ignore
+        //         function: async ({code}: {code: string}) => {   
+        //             if(debug) {
+        //                 console.log("Checking code...", code);                 
+        //             }
+        //             const res = await instance.checkCode(code);
                     
-                    return res;
+        //             return res;
 
-                },
-                description: "Check the provided code for errors or issues without running it. Returns the result of the code check.",
-                parse: zodParseJSON(checkCodeSchema),
-                parameters: zodToJsonSchema(checkCodeSchema),
-            }
-        },        
+        //         },
+        //         description: "Check the provided code for errors or issues without running it. Returns the result of the code check.",
+        //         parse: zodParseJSON(checkCodeSchema),
+        //         parameters: checkCodeSchema.toJSONSchema(),
+        //     }
+        // },        
         {
             type: "function",
             function: {
@@ -158,14 +166,21 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
                         }
                     }
 
-                    finalSubmittedCode = code;
-                    return {
-                        success: true,
+                    const res = await instance.runCode(code);
+
+                    if(hideLogsFromAgent) {
+                        res.logs = [];
                     }
+
+                    if(res.success) {
+                        finalSubmittedCode = code;
+                    }
+                    return res;                    
+
                 },
-                description: "Submit the provided code as the final code to run. This will end the code generation process and the code will be run in the sandbox. Use this when you are confident in the code you have generated and want to run it.",
+                description: "Submit the provided code as a candidate for the final code. The code will be checked and run and output logs and traces will be provided. Check the logs, if satisifed, respond to the user otherwise submit again.",
                 parse: zodParseJSON(submitCodeSchema),
-                parameters: zodToJsonSchema(submitCodeSchema),
+                parameters: submitCodeSchema.toJSONSchema(),
             }
         }
     ];
@@ -193,22 +208,23 @@ export const generateCode = async function(instance:AIMyAPIInstance, queryText:s
         })
         .on('message', async (message: ChatCompletionMessageParam) => {
             if(debug) {
-                console.log("Message:", JSON.stringify(message, null, 2));
+                if("reasoning_content" in message) {
+                    console.log(message.reasoning_content);
+                }
+                //console.log("Message:", JSON.stringify(message, null, 2));
             }
 
             newHistoryItems.push(message);
         })
         .on('functionToolCall', (functionCall: OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall.Function) => {
-            if(debug) {
-                console.log("Function Call:", JSON.stringify(functionCall, null, 2));
-            }
-            
-
+            // if(debug) {
+            //     console.log("Function Call:", JSON.stringify(functionCall, null, 2));
+            // }
         })
         .on('functionToolCallResult', (functionCall) => {
-            if(debug) {
-                console.log("Function Call Result:", JSON.stringify(functionCall, null, 2));
-            }
+            // if(debug) {
+            //     console.log("Function Call Result:", JSON.stringify(functionCall, null, 2));
+            // }
         })
     
       const finalContent = await runner.finalContent();
@@ -333,7 +349,8 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
                     console.error("Unknown failure checking code");
                     return {
                         success: false,
-                        logs: [],
+                        logs: [createLog("Unknown failure checking code", "compiler")],
+
                     };
                 } 
         
@@ -386,7 +403,7 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
         
             // Create sandbox           
             // NOTE: not sure why I have to replace the backslash here
-            const {vm, runCode: runTask, isAsyncProcessRunning} = await createSandbox(QuickJS, apiExports ? {
+            const {vm, runCode: sandbox_runCode, isAsyncProcessRunning} = await createSandbox(QuickJS, apiExports ? {
                 [apiDefFilePath]: apiExports,
             } : undefined, { 
                 ...apiGlobals,
@@ -401,7 +418,7 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
                     console.log("Running Code:\n", code);
                 }
 
-                const res = await runTask(wrapCode(apiGlobalName, apiDefFilePath, code));
+                const res = await sandbox_runCode(wrapCode(apiGlobalName, apiDefFilePath, code));
         
                 if(!res) {
                     console.error("Unknown failure running task");
@@ -441,29 +458,36 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
             // Create prompt
             
             if(debug) {
-                console.log("Query:", userQuery);
+                console.log("[debug] Query:", userQuery);
             }
         
             // Generate Code
             console.time("Generate Task")
+            const prompt = createTaskPrompt.replace("{{CONTEXT}}", currentContext ? JSON.stringify(currentContext, null, 2) : "" );
             const generatedCode:GenerateCodeResult | null = await generateCode(instance, 
                 userQuery, 
                 [], 
-                createTaskPrompt.replace("{{CONTEXT}}", currentContext ? JSON.stringify(currentContext, null, 2) : "" ), 
+                prompt, 
                 debug, 
                 hideLogsFromAgent, 
                 model, 
                 additionalModelOptions
             );
             console.timeEnd("Generate Task")
+
+            console.log(`generated code result\nSuccess?: ${generatedCode?.success}\nComments: ${generatedCode?.comments}\nRunning Code...`);
         
-            console.time("Run Code")
+
+            console.time("Run Code took")
             if(generatedCode?.code) {
-                await instance.runCode(generatedCode.code);
+                const codeRunResult = await instance.runCode(generatedCode.code);
+                if(!codeRunResult.success) {
+                    console.error("Error running generated code");
+                }
             } else {
                 console.error("No code generated", generatedCode);
             }
-            console.timeEnd("Run Code")
+            console.timeEnd("Run Code took")
 
             return generatedCode;
         }

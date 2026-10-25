@@ -1,28 +1,29 @@
 import "quickjs-emscripten";
-import { QuickJSDeferredPromise } from "quickjs-emscripten";
+import { isSuccess, QuickJSContext, QuickJSDeferredPromise } from "quickjs-emscripten";
+import { z, ZodError, ZodObject } from "zod";
+import { Logger } from "./logger";
 
+type QuickJSPromiseWithId = QuickJSDeferredPromise & { _promiseId: number };
 
 let promiseId = 0;
-let openPromises = {};
+let openPromises: Record<number, QuickJSPromiseWithId | null> = {};
 
-export function wrapPromise(vm, promise: Promise<any>, beginAsyncProcess: () => void, endAsyncProcess: () => void): any {
+export function wrapPromise(vm: QuickJSContext, promise: Promise<any>, beginAsyncProcess: () => void, endAsyncProcess: () => void, logger: Logger): any {
   promiseId += 1;
  
-  const vmPromise = vm.newPromise()
+  const vmPromise = vm.newPromise() as QuickJSPromiseWithId
   vmPromise._promiseId = promiseId;
   beginAsyncProcess();
   promise.then((...args) => {
     //console.log("Promised resolved", args);
     endAsyncProcess();
-    const wrappedArgs = args.map((arg) => wrap(vm, arg, undefined, beginAsyncProcess, endAsyncProcess));
+    const wrappedArgs = args.map((arg) => wrap(vm, arg, undefined, beginAsyncProcess, endAsyncProcess, logger));
     openPromises[vmPromise._promiseId] = null;
     vmPromise.resolve(...wrappedArgs);
     wrappedArgs.forEach((arg) => arg.dispose());
-  }).catch((...args) => {
-    //console.log("Promised rejected", args);
-    const wrappedArgs = args.map((arg) => wrap(vm, arg, undefined, beginAsyncProcess, endAsyncProcess));
-    vmPromise.reject(...wrappedArgs);
-    wrappedArgs.forEach((arg) => arg.dispose());
+  }).catch(error => {   
+    vmPromise.reject(vm.newError(error?.message || "An error occurred"));
+
     openPromises[vmPromise._promiseId] = null;
   });
   vmPromise.settled.then( () => {
@@ -35,37 +36,42 @@ export function wrapPromise(vm, promise: Promise<any>, beginAsyncProcess: () => 
   return vmPromise.handle
 }
 
-export function rejectOpenPromises(vm) {
+export function rejectOpenPromises(vm: QuickJSContext) {
   for (const [id, promise ] of Object.entries(openPromises)) {
     if (promise !== null) {
       (promise as QuickJSDeferredPromise).reject(vm.newError("Shutting down"));
-      openPromises[id] = null;
+      openPromises[id as unknown as number] = null;
     }
   }
 
   vm.runtime.executePendingJobs();
 }
 
-export function wrap(vm, value: any, context: object,  beginAsyncProcess: () => void, endAsyncProcess: () => void): any {
+const isPromise = (value: any) => { return (typeof value === 'object' && typeof value.then === 'function') };
+
+// Value - member variable to wrap
+// context - owning object
+export function wrap(vm: QuickJSContext, value: any, context: object | undefined,  beginAsyncProcess: () => void, endAsyncProcess: () => void, logger: Logger): any {
   if (value === null) {
+
     return null;
-  } else if (typeof value === 'object' && typeof value.then === 'function') {
-    //console.log("Wrapped promise");
-    return wrapPromise(vm, value, beginAsyncProcess, endAsyncProcess);
+  } else if (isPromise(value)) {
+    return wrapPromise(vm, value, beginAsyncProcess, endAsyncProcess, logger);
   } else if (typeof value === "function") {
     //console.log("Wrapped function")
-    return wrapGenericFunction(vm, value, context, beginAsyncProcess, endAsyncProcess);
+    return wrapGenericFunction(vm, value, context, beginAsyncProcess, endAsyncProcess, logger);
   } else if (Array.isArray(value)) {
     //console.log("Wrapped array")
-    return wrapArray(vm, value, beginAsyncProcess, endAsyncProcess);
+    return wrapArray(vm, value, beginAsyncProcess, endAsyncProcess, logger);
   } else if (value === null) {
     //console.log("Wrapped null")
     return vm.null;
   } else if (value instanceof Date) {
-    return vm.evalCode(`new Date(${value.getTime()})`).value;    
+    const res = vm.evalCode(`new Date(${value.getTime()})`);
+    return isSuccess(res) ? res.value : null;
   } else if (typeof value === "object") {
     //console.log("Wrapped object")
-    return wrapObject(vm, value, beginAsyncProcess, endAsyncProcess);
+    return wrapObject(vm, value, beginAsyncProcess, endAsyncProcess, logger);
   } else if (typeof value === "string") {
     //console.log("Wrapped string")
     return vm.newString(value)
@@ -77,20 +83,21 @@ export function wrap(vm, value: any, context: object,  beginAsyncProcess: () => 
     return vm.newBigInt(value);
   } else if (typeof value === "boolean") {
     // since there is no newBoolean, we have to do this
-    return vm.evalCode(value ? "true" : "false").value;
+    const res = vm.evalCode(value ? "true" : "false")
+    return isSuccess(res) ? res.value : null;
   } else if (typeof value === "undefined") {
     return vm.undefined
   } else {
+    console.error("Unknown type", value)
     return null
   }
 }
 
-export function wrapObject(vm, obj: any, beginAsyncProcess: () => void, endAsyncProcess: () => void): any {
+export function wrapObject(vm: QuickJSContext, obj: any, beginAsyncProcess: () => void, endAsyncProcess: () => void, logger: Logger): any {
   const vmObject = vm.newObject();
 
   for (const [key, value] of Object.entries(obj)) {
-    //console.log("wrapping", key, value)
-    let wrappedValue = wrap(vm, value, obj, beginAsyncProcess, endAsyncProcess);
+    let wrappedValue = wrap(vm, value, obj, beginAsyncProcess, endAsyncProcess, logger);
 
     if (wrappedValue !== null) {
       vm.setProp(vmObject, key, wrappedValue);
@@ -103,30 +110,30 @@ export function wrapObject(vm, obj: any, beginAsyncProcess: () => void, endAsync
   return vmObject;
 }
 
-export function wrapObjectWhitelist(vm, obj: any, whitelist: string[], beginAsyncProcess: () => void, endAsyncProcess: () => void): any {
+export function wrapObjectWhitelist(vm: QuickJSContext, obj: any, whitelist: string[], beginAsyncProcess: () => void, endAsyncProcess: () => void, logger: Logger): any {
   const vmObject = vm.newObject();
 
   whitelist.forEach((key) => {
-    const value = obj[key];
-    //console.log("wrapping", key, value)
-    const wrappedValue = wrap(vm, value, obj, beginAsyncProcess, endAsyncProcess);
+      // console.log("wrapping", key, value)
+      const value = obj[key];
+      const wrappedValue = wrap(vm, value, obj, beginAsyncProcess, endAsyncProcess, logger);
 
-    if (wrappedValue !== null) {
-      vm.setProp(vmObject, key, wrappedValue);
-      if (wrappedValue != vm.undefined && wrappedValue != vm.null && wrappedValue.dispose) {
-        wrappedValue.dispose();
+      if (wrappedValue !== null) {
+        vm.setProp(vmObject, key, wrappedValue);
+        if (wrappedValue != vm.undefined && wrappedValue != vm.null && wrappedValue.dispose) {
+          wrappedValue.dispose();
+        }
       }
-    }
   });
 
   return vmObject;
 }
 
-export function wrapArray(vm, arr: any[], beginAsyncProcess: () => void, endAsyncProcess: () => void): any {
+export function wrapArray(vm: QuickJSContext, arr: any[], beginAsyncProcess: () => void, endAsyncProcess: () => void, logger: Logger): any {
   const vmArray = vm.newArray();
 
   for (let i = 0; i < arr.length; i++) {
-    let wrappedValue = wrap(vm, arr[i], arr, beginAsyncProcess, endAsyncProcess);
+    let wrappedValue = wrap(vm, arr[i], arr, beginAsyncProcess, endAsyncProcess, logger);
     vm.setProp(vmArray, i, wrappedValue);
     if (wrappedValue != vm.undefined && wrappedValue != vm.null) {
       wrappedValue.dispose();
@@ -136,26 +143,64 @@ export function wrapArray(vm, arr: any[], beginAsyncProcess: () => void, endAsyn
   return vmArray;
 }
 
-export function wrapGenericFunction(vm, fn: Function, context: object = undefined, beginAsyncProcess: () => void, endAsyncProcess: () => void): any {
+function validationDecorator(schema: ZodObject) {
+  return function(...args: unknown[]) {
+    let argumentObject: Record<string, unknown> = {};
+    const params = Object.keys(schema.def.shape);
+    args.forEach((value, index) => {
+      if(index < params.length) {
+        argumentObject[params[index]] = value;
+      }
+    });
+
+    schema.parse(argumentObject);
+  }
+}
+
+export function wrapGenericFunction(vm: QuickJSContext, fn: Function, context: object | undefined = undefined, beginAsyncProcess: () => void, endAsyncProcess: () => void, logger: Logger): any {
   const vmFn = vm.newFunction(fn.name, (...args) => {
     const unwrappedArgs: any[] = args.map(vm.dump)
     //console.log("Wrapped function called", fn.name, unwrappedArgs )
     try {
+      const validatorName = `_params_${fn.name}`;
+      const hasValidator = context != undefined && validatorName in context && "parse" in (context as Record<string, any>)[validatorName];
+    
+      if(hasValidator) {
+        const schema = (context as Record<string, ZodObject>)[validatorName];
+        try {
+          const validator = validationDecorator(schema);
+          validator(...unwrappedArgs);    // will throw if validation fails
+        } catch(e) {
+          // Throwing (not vm.throw) is how a host function raises an exception in the VM;
+          // newFunction catches it and turns it into a sandbox exception.
+          if(e instanceof ZodError) {
+            throw new Error(`Parameter validation failed for function "${fn.name}". Expected Parameters: [${Object.keys(schema.def.shape).join(",")}]. Errors:\n${z.prettifyError(e)}`);
+          }
+          throw new Error(`Parameter validation error calling ${fn.name}`);
+        }
+      }
+
       const result = fn.call(context, ...unwrappedArgs);
-      //console.log("result", result);
-      const wrappedResult = wrap(vm, result, undefined, beginAsyncProcess, endAsyncProcess);
+
+      logger.trace(fn.name, unwrappedArgs, result);
+
+      const wrappedResult = wrap(vm, result, undefined, beginAsyncProcess, endAsyncProcess, logger);
       return wrappedResult;
-    } catch (e) {
-      console.log("Error", e);
+    } catch (e: any) {
+      logger.error([e], "sandbox");
+      if(e instanceof Error) {
+        throw e;
+      }
+      throw new Error("An exception occurred calling " + fn.name);
     }
 
   });
   return vmFn;
 }
 
-export function injectTimingFunctions(vm, cbAddedTimer, cbRemovedTimer, maxTimeout = 600000): void {
+export function injectTimingFunctions(vm: QuickJSContext, cbAddedTimer: () => void, cbRemovedTimer: () => void, maxTimeout = 600000): void {
   // Should we impose a limit on how long things can run for?
-  const timeoutFunctionHandles = {};
+  const timeoutFunctionHandles: any = {};
   const _setTimeout = vm.newFunction("setTimeout", (vmFnHandle, timeoutHandle) => {
     // Make a copy because otherwise vmFnHandle does not live long enough to call after the timeout
     const vmFnHandleCopy = vmFnHandle.dup()
@@ -181,12 +226,12 @@ export function injectTimingFunctions(vm, cbAddedTimer, cbRemovedTimer, maxTimeo
     }, timeout)
     timeoutFunctionHandles[timeoutID.toString()] = vmFnHandleCopy;
 
-    return vm.newNumber(timeoutID);
+    return vm.newNumber(timeoutID as unknown as number);
   });
 
   vm.setProp(vm.global, "setTimeout", _setTimeout);
   _setTimeout.dispose();
-  const intervalFunctionHandles = {};
+  const intervalFunctionHandles: any = {};
   const _setInterval = vm.newFunction("setInterval", (vmFnHandle, timeoutHandle) => {
     // Make a copy because otherwise vmFnHandle does not live long enough to call after the timeout
     const vmFnHandleCopy = vmFnHandle.dup()
@@ -221,7 +266,7 @@ export function injectTimingFunctions(vm, cbAddedTimer, cbRemovedTimer, maxTimeo
     }, timeout);
     intervalFunctionHandles[intervalId.toString()] = vmFnHandleCopy;
 
-    return vm.newNumber(intervalId);
+    return vm.newNumber(intervalId as unknown as number);
   });
   vm.setProp(vm.global, "setInterval", _setInterval);
   _setInterval.dispose();

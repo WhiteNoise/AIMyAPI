@@ -14,21 +14,29 @@ import { API } from "./sales_api_impl";
         debug: false,
     })
 
-    await aimyapi.runCode(`await salesApi.print("Hello from the sandbox! Here is some sales data:");`);
+    // test the sandbox:
+     await aimyapi.runCode(`await salesApi.display("Hello from the sandbox! Here is some sales data:");`);
     
-    await aimyapi.runCode(`await salesApi.print(salesApi.getDate());`);
-    await aimyapi.runCode(`await salesApi.print(salesApi.getSalesData());`);
-    
-    console.log("Print 'hello' three times.")
-    await aimyapi.processRequest("Print 'hello' three times.");
+    console.log("Test parameter validation (should fail)");
+    const failResult = await aimyapi.runCode(`await salesApi.sendEmail("fail");`);
+    console.log(JSON.stringify(failResult, null, 2));
+    console.log("Test parameter validation (should pass)");
+    await aimyapi.runCode(`await salesApi.sendEmail("to@email.com", "Your emails", "body text");`);
 
-    console.log("What month had the highest sales in 2020 for any business unit?")
-    await aimyapi.processRequest("What was our best month in 2020");
+    await aimyapi.runCode(`await salesApi.display(salesApi.getDate());`);
 
-    console.log("Which business unit had the highest sales in 2020? Print the totals for each")
-    await aimyapi.processRequest("Which business unit had the highest sales in 2020? Print the totals for each");
-    // Note: this is a bit of a trick question because two of them are tied for first. The agent usually doesn't realize this edge case. Should we instruct it to look for edge cases?
+    // test code writing:
+    const queries = [ "Display 'hello' three times.", "What month had the highest sales in 2020 for any business unit?", "Which business unit had the highest sales in 2020? Display the totals for each business unit", "Compute the total sales for each month in 2020 then email the top 3 to test@email.com"]
 
-    console.log("Compute the total sales for each month in 2020 then email the top 3 to test@email.com")
-    await aimyapi.processRequest("Compute the total sales for each month in 2020 then email the top 3 to test@email.com");
+    for(const k in queries) {
+        const query = queries[k];
+        console.log(`Query: ${query}`);
+        const testResult = await aimyapi.processRequest(query);
+        if(testResult?.code)
+            console.log("Code:", testResult.code)
+        else {
+            console.log(testResult);
+        }
+    }
+
 })();
