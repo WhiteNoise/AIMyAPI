@@ -1,20 +1,43 @@
 # AI My API
 
-AIMyAPI is a typescript code sandbox for your LLM using [QuickJS](https://github.com/justjake/quickjs-emscripten). It allows you to expose a global API object and allows your agent to write functions against it without giving it access to the internet or your filesystem except through the methods you define.
+## Description
 
-Requires an OpenAI compatible API
+AIMyAPI is a typescript code sandbox and code writing harness for your LLM using [QuickJS](https://github.com/justjake/quickjs-emscripten). It allows you to expose a global API object and gives an agent tools to write functions against it without giving it access to the internet, your secrets or your filesystem except through the methods you define.  
 
-AIMyAPI will handle async operations and timers in your API object.
+It can be used to ask questions about your data, build small, self contained business functions like reports, calculations, workflow automations, plugins, and chat based AI ordering or support systems. Since it's based around writing code, it can invent new functionality in response to user requests with only basic CRUD access.
+
+Note: Requires an OpenAI compatible API
+
+## Features
+
+- It simplifies the setup and usage of sandboxed typescript code
+- It allows you to define what functions and data are available in the sandbox and write your own access rules
+- It includes a small code writing harness to generate code against your API with typechecking and compilation checks (which helps the LLM catch mistakes and hallucinations) 
+- It includes logging instrumentation to help the agent check code execution without having to guess
+- It limits the problem space so that even small (2b) LLMs can produce correct code in a token efficient way by providing just enough context.
+
+## Why use it?
+
+- You want to allow an LLM to write code without giving it unfettered access to your file system and the internet, etc
+- You want to perform operations on sensitive information or PII without needing to expose it to the LLM's context. Eg, the LLM defines the process, but does not actually do the work.
+
+## Why not just give an agent tools or MCP access to your API's
+
+You certainly could - the downside here would be less privacy and more token inefficiency. It may also be harder to put guardrails around what agents do and how they use the data they get, especially if combining multiple MCP's.
 
 ## About version 1.0 update and motivation
 
-AIMyAPI was originally written at a time (circa ChatGPT 3.5 / GPT-4) before tool calling existed, before Claude code and codex and just before OpenAI released their code interpreter. LLM models have also gotten drastically better since. Some of the problems it originally aimed to solve are better solved today with simple tool calling. However, there is still a need to safely run small programs in a sandboxed way, reliable way. Tools are good if you have a set interface but there may be times that an agent needs to do some sorting or filtering, or an algorithm or analysis, or some repeatable workflow which isn't implemented by the available tool functions. Writing code allows the agent to do things it might not otherwise be able to do with tools alone. All the AI models are thoroughly trained to write code do solve all kinds of problems. Having the ability to write code allows the tools API surface to be smaller; it could simply be a set of CRUD operations.
+AIMyAPI was originally written at a time (circa ChatGPT 3.5 / GPT-4) before tool calling existed, before harnesses like Claude code and codex and just before OpenAI released their code interpreter. LLM models have also gotten drastically better since. Some of the problems I originally aimed to solve are better solved today with simple tool calling or MCP's. However, there is still a need to safely run small programs in a sandboxed way, reliable way. Tools are good if you have a set interface but there may be times that an agent needs to do some sorting or filtering, or an algorithm or analysis, or some repeatable workflow which isn't implemented by the available tool functions. Writing code allows the agent to do things it might not otherwise be able to do with tools alone. All the AI models are thoroughly trained to write code do solve all kinds of problems. Having the ability to write code allows the tools API surface to be smaller; it could simply be a set of CRUD operations and the agent can create whatever operations it needs from them.
 
-The other advantage of writing code is privacy and security. When an agent executes code in a sandbox, it doesn't see any of the results*, API keys or other things you may want to keep hidden. When an agent uses tools, it sees all the parameters and results of the tool calls. Code can be audited for security and correctness before running it. Finally, code can encompass a series of operations, whereas tool calls need to be approved one at a time or just trusted, often without knowing what will come next.
+The other advantage of writing code is privacy and security. When you run code in the sandbox, the agent doesn't need to see all the data or results. This means API keys or PII can be kept hidden and only the user sees them, depending on how you set things up. For most agents today, when an agent uses tools, it sees all the parameters and results of the tool calls so that means all your information is shared with your LLM provider.
+
+Another advantage of writing code is that it can be audited for security and correctness before running it. Finally, code can encompass a series of operations, whereas tool calls need to be approved one at a time or just trusted, often without knowing what will come next.
 
 Version 1.0 updates AIMyAPI code generation to use the tool calling process for writing code. This allows the agent to check the code and run some tests or API calls before committing to a final version. This should result in better code since the previous model relied on the agent always being able to one-shot the code, which depended on it having a complete view of the problem before writing the code which wasn't always realistic. We could also update this process a bit to add "Plan" / "Build" / "Test" phases instead of just one code generation prompt.
 
-*You'll have the option to hide logs and errors from the agent - logging can allow the agent to fix it's own coding mistakes and test the code, but it also allows information to leave the sandbox which you may want to limit depending on the sensitivity the data your api is handling. Another approach would be to implement a mocked version of your API that the agent can use to write code and debug against while keeping your real data hidden and safe from potentially destructive operations.
+## What's new
+
+AIMyAPI will handle async operations and timers in your API object. It will also now validate API function parameters against a Zod schema.
 
 ## Quickstart
 
