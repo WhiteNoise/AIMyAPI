@@ -151,12 +151,16 @@ The sandbox implementation supports basic types and the built in objects Promise
 
 ### Recommendations
 
-Create a separate sandbox with a mocked API for generating code. This way the agent doesn't modify anything while troubleshooting or running test scripts. Additionally it prevents the agent from ever seeing real data if you want to maintain privacy. Use the real API only when you want to run code.
+#### Use Mocked API when generating code
+
+Create a separate sandbox with a mocked API for generating code. This way the agent doesn't modify anything while troubleshooting or running test scripts. Additionally it prevents the agent from ever seeing real data if you want to maintain privacy. Use the real API only when you want to run code. As long as you don't expose the logs to another LLM, then nothing leaves the sandbox except via the API's you have defined.
+
+#### Implement validation for your API's
 
 Implement schema validation for your API functions. Follow the convention by defining `_params_[FUNCTIONNAME]` as a Zod object:
 
 ```ts
-// Schema validation for function parameters. Will throw if parameters are invalid to prevent silent failures and surface info to the agent.
+// Schema validation for function parameters. Will throw an exception if parameters are invalid to prevent silent failures and surface info to the agent.
 // fields should be defined in the same order that they occur in the function
 public _params_sendEmail = z.object({
     to: z.string(),
@@ -164,7 +168,6 @@ public _params_sendEmail = z.object({
     body: z.string().min(5)
 })
 
-// Mock implementation, doesn't actually send an email
 async sendEmail(to: string, subject: string, body: string): Promise<void> {
     ...
 }
