@@ -2,7 +2,7 @@ require('dotenv').config()
 import fs from 'fs';
 import { OpenAI } from "openai";
 
-import { LogSource, SandboxLog } from "./logger";
+import { LogSource, SandboxLogEntry } from "./logger";
 import createSandbox, { CodeRunResult } from "./sandbox";
 import { rejectOpenPromises } from './sandbox-wrappers';
 
@@ -13,6 +13,8 @@ import { AutoParseableTool } from 'openai/lib/parser.js';
 import { z } from 'zod';
 
 import path from 'path';
+
+export type { SandboxLogEntry, SandboxLogOrError, SandboxTrace } from "./logger";
 
 const openai = new OpenAI( { baseURL: process.env.OPENAI_API_BASE_URL || undefined, apiKey: process.env.OPENAI_API_KEY || undefined } );
 
@@ -48,7 +50,7 @@ export interface GenerateCodeResult {
 }
 
 function createLog( message: string, source: LogSource) {
-    return { type: "log", args: [message], source } as SandboxLog
+    return { type: "log", args: [message], source } as SandboxLogEntry
 }
 
 const wrapCode = (apiGlobalName:string, apiFileDefPath:string, code:string) => `

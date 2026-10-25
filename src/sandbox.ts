@@ -2,12 +2,12 @@ import "quickjs-emscripten";
 
 import { QuickJSWASMModule } from "quickjs-emscripten";
 import * as ts from "typescript";
-import { Logger, SandboxLog } from "./logger";
+import { Logger, SandboxLogEntry } from "./logger";
 import {
-  injectTimingFunctions,
-  wrap,
-  wrapObject,
-  wrapObjectWhitelist,
+    injectTimingFunctions,
+    wrap,
+    wrapObject,
+    wrapObjectWhitelist,
 } from "./sandbox-wrappers";
 
 // Should we use "noEmitOnError": true ?
@@ -37,7 +37,7 @@ export interface Globals {
 }
 export type CodeRunResult = {
   success: boolean;
-  logs: SandboxLog[];
+  logs: SandboxLogEntry[];
 }
 
 

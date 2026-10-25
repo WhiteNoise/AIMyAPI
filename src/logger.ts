@@ -1,19 +1,23 @@
 export type LogSource = "sandbox" | "compiler" | "runner";
 export type LogEntryType = "log" | "error" | "trace";
 
-export type SandboxLog = { 
-  type: "log" | "error"; 
-  args: any[]; 
-  source: LogSource 
-} | {
+export type SandboxTrace = {
   type: "trace";
   fnName: string,
   fnArgs: any[],
   result: any
 };
 
+export type SandboxLogOrError = { 
+  type: "log" | "error"; 
+  args: any[]; 
+  source: LogSource 
+}
+
+export type SandboxLogEntry = SandboxLogOrError | SandboxTrace;
+
 export class Logger {
-  private logs: SandboxLog[] = [];
+  private logs: SandboxLogEntry[] = [];
   debug: boolean = false;
 
   constructor(debug: boolean = false) {

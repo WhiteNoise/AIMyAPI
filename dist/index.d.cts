@@ -2,16 +2,18 @@ import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { QuickJSWASMModule } from 'quickjs-emscripten';
 
 type LogSource = "sandbox" | "compiler" | "runner";
-type SandboxLog = {
-    type: "log" | "error";
-    args: any[];
-    source: LogSource;
-} | {
+type SandboxTrace = {
     type: "trace";
     fnName: string;
     fnArgs: any[];
     result: any;
 };
+type SandboxLogOrError = {
+    type: "log" | "error";
+    args: any[];
+    source: LogSource;
+};
+type SandboxLogEntry = SandboxLogOrError | SandboxTrace;
 
 interface GlobalOption {
     value: any;
@@ -22,7 +24,7 @@ interface Globals {
 }
 type CodeRunResult = {
     success: boolean;
-    logs: SandboxLog[];
+    logs: SandboxLogEntry[];
 };
 
 interface AIMyAPIOptions {
@@ -63,4 +65,4 @@ interface AIMyAPIModuleExports {
 }
 declare const AIMyAPI: AIMyAPIModuleExports;
 
-export { AIMyAPI, type AIMyAPIInstance, type AIMyAPIModuleExports, type AIMyAPIOptions, type CodeRunResult, type GenerateCodeResult, type GlobalOption, type Globals, createBasePrompt, generateCode, zodParseJSON };
+export { AIMyAPI, type AIMyAPIInstance, type AIMyAPIModuleExports, type AIMyAPIOptions, type CodeRunResult, type GenerateCodeResult, type GlobalOption, type Globals, type SandboxLogEntry, type SandboxLogOrError, type SandboxTrace, createBasePrompt, generateCode, zodParseJSON };

@@ -20,6 +20,7 @@ Note: Requires an OpenAI compatible API
 
 - You want to allow an LLM to write code without giving it unfettered access to your file system and the internet, etc
 - You want to perform operations on sensitive information or PII without needing to expose it to the LLM's context. Eg, the LLM defines the process, but does not actually do the work.
+- Use it as a subagent for writing sandboxed code in another system
 
 ## Why not just give an agent tools or MCP access to your API's
 
