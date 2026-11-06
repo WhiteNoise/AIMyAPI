@@ -49,7 +49,7 @@ export type CodeRunResult = {
 
 // Is there some way we can treat the API and globals the same?
 // We could just provide an object for all globals (including the API) and also have the whitelist as a parameter..
-export default async function createSandbox(QuickJS: QuickJSWASMModule, requireLookup:any = {}, globals: Globals = {}, debug:boolean = false, limitLogs: boolean = true) {
+export default async function createSandbox(QuickJS: QuickJSWASMModule, requireLookup:any = {}, globals: Globals = {}, debug:boolean = false, limitLogs: boolean = false) {
   const vm = QuickJS.newContext();
 
   let errorState = false;

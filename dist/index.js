@@ -351,7 +351,7 @@ function tsCompile(source, options) {
   }
   return ts__namespace.transpileModule(source, options).outputText;
 }
-async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = false, limitLogs = true) {
+async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = false, limitLogs = false) {
   const vm = QuickJS.newContext();
   let errorState = false;
   let lastError = "";

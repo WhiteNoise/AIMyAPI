@@ -12,6 +12,7 @@ import { API } from "./sales_api_impl";
         apiDefFilePath:  "./example/sales_api.ts",
         apiDocsPath: "./example/sales_api.md",
         debug: false,
+        limitLogs: true
     })
 
     // test the sandbox:
