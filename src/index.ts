@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 import path from 'path';
 
-export type { SandboxLogEntry, SandboxLogOrError, SandboxTrace } from "./logger";
+export * from "./logger";
 
 const openai = new OpenAI( { baseURL: process.env.OPENAI_API_BASE_URL || undefined, apiKey: process.env.OPENAI_API_KEY || undefined } );
 
@@ -82,10 +82,6 @@ export function createBasePrompt(apiFilePath:string, apiGlobalName: string, docu
 
 
 const runCodeSchema = z.object({
-    code: z.string(),
-});
-
-const checkCodeSchema = z.object({
     code: z.string(),
 });
 

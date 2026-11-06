@@ -4,11 +4,13 @@ import { QuickJSWASMModule } from "quickjs-emscripten";
 import * as ts from "typescript";
 import { Logger, SandboxLogEntry } from "./logger";
 import {
-    injectTimingFunctions,
-    wrap,
-    wrapObject,
-    wrapObjectWhitelist,
+  injectTimingFunctions,
+  wrap,
+  wrapObject,
+  wrapObjectWhitelist,
 } from "./sandbox-wrappers";
+
+// linting: https://eslint.org/docs/latest/integrate/nodejs-api#linter
 
 // Should we use "noEmitOnError": true ?
 function tsCompile(

@@ -2,6 +2,7 @@ import { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import { QuickJSWASMModule } from 'quickjs-emscripten';
 
 type LogSource = "sandbox" | "compiler" | "runner";
+type LogEntryType = "log" | "error" | "trace";
 type SandboxTrace = {
     type: "trace";
     fnName: string;
@@ -14,6 +15,25 @@ type SandboxLogOrError = {
     source: LogSource;
 };
 type SandboxLogEntry = SandboxLogOrError | SandboxTrace;
+declare class Logger {
+    private logs;
+    debug: boolean;
+    constructor(debug?: boolean);
+    getLogs(): SandboxLogEntry[];
+    addEntry(type: "log" | "error", args: any, source: LogSource): void;
+    log(args: any, source: LogSource): void;
+    trace(fnName: string, fnArgs: any[], result: any): void;
+    error(args: any, source: LogSource): void;
+    clear(): void;
+    getPrettyLogs(): any[];
+    /**
+     * Returns a trimmed copy of `value` that is safe to log.
+     * - Objects/arrays nested deeper than `maxDepth` become "[Object]" / "[Array(n)]".
+     * - Arrays longer than `maxArrayItems` keep the first items plus a "+N more items" string.
+     * - Circular references become "[Circular]".
+     */
+    static limitObjectForLogs(value: any, maxDepth?: number, maxArrayItems?: number): any;
+}
 
 interface GlobalOption {
     value: any;
@@ -65,4 +85,4 @@ interface AIMyAPIModuleExports {
 }
 declare const AIMyAPI: AIMyAPIModuleExports;
 
-export { AIMyAPI, type AIMyAPIInstance, type AIMyAPIModuleExports, type AIMyAPIOptions, type CodeRunResult, type GenerateCodeResult, type GlobalOption, type Globals, type SandboxLogEntry, type SandboxLogOrError, type SandboxTrace, createBasePrompt, generateCode, zodParseJSON };
+export { AIMyAPI, type AIMyAPIInstance, type AIMyAPIModuleExports, type AIMyAPIOptions, type CodeRunResult, type GenerateCodeResult, type GlobalOption, type Globals, type LogEntryType, type LogSource, Logger, type SandboxLogEntry, type SandboxLogOrError, type SandboxTrace, createBasePrompt, generateCode, zodParseJSON };

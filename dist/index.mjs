@@ -517,9 +517,6 @@ function createBasePrompt(apiFilePath, apiGlobalName, documentationPath) {
 const runCodeSchema = z.object({
   code: z.string()
 });
-z.object({
-  code: z.string()
-});
 const submitCodeSchema = z.object({
   code: z.string()
 });
@@ -860,4 +857,4 @@ const AIMyAPI = {
   createSandbox
 };
 
-export { AIMyAPI, createBasePrompt, generateCode, zodParseJSON };
+export { AIMyAPI, Logger, createBasePrompt, generateCode, zodParseJSON };
