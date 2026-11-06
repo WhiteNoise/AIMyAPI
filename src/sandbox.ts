@@ -49,7 +49,7 @@ export type CodeRunResult = {
 
 // Is there some way we can treat the API and globals the same?
 // We could just provide an object for all globals (including the API) and also have the whitelist as a parameter..
-export default async function createSandbox(QuickJS: QuickJSWASMModule, requireLookup:any = {}, globals: Globals = {}, debug:boolean = false) {
+export default async function createSandbox(QuickJS: QuickJSWASMModule, requireLookup:any = {}, globals: Globals = {}, debug:boolean = false, limitLogs: boolean = true) {
   const vm = QuickJS.newContext();
 
   let errorState = false;
@@ -202,7 +202,7 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
           result.error.dispose();
           return {
             success: false,
-            logs: logger.getPrettyLogs(),
+            logs: limitLogs ? logger.getPrettyLogs() : logger.getLogs(),
           };
         } else if("value" in result) {
           //console.log("Task Result:", vm.dump(result.value), errorState);
@@ -219,7 +219,7 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
             logger.error(["Uncaught exception:", err, "\n", lines.join("\n")], "runner");
             return { 
               success: false, 
-              logs: logger.getPrettyLogs(),
+              logs: limitLogs ? logger.getPrettyLogs() : logger.getLogs(),
             };
           }
           // @ts-ignore this is a success response
@@ -234,13 +234,13 @@ export default async function createSandbox(QuickJS: QuickJSWASMModule, requireL
 
           return {
             success: !errorState,
-            logs: logger.getPrettyLogs(),
+            logs: limitLogs ? logger.getPrettyLogs() : logger.getLogs(),
           };
         } else {
           logger.error(["Unknown execution result:", result], "runner");
           return {
             success: false,
-            logs: logger.getPrettyLogs(),
+            logs: limitLogs ? logger.getPrettyLogs() : logger.getLogs(),
           };
         }
       } catch (e) {

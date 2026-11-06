@@ -29,6 +29,7 @@ export interface AIMyAPIOptions {
     apiGlobalName?: string;    
     apiDocsPath?: string;
     debug?: boolean;
+    limitLogs?: boolean;
     model?: string;
     additionalModelOptions?: object;
     hideLogsFromAgent?: boolean; // If true, logs from code execution will not be included in the messages sent to the agent. This can be useful to prevent the agent from being overwhelmed with logs or to hide implementation details. Default is false (logs will be included in messages).
@@ -334,7 +335,7 @@ async function createWithAPI(options:AIMyAPIOptions): Promise<AIMyAPIInstance> {
                     value: apiObject,
                     whitelist: apiWhitelist
                 }
-            }, options.debug);
+            }, options.debug, options.limitLogs);
 
             try {
                 if(debug) {

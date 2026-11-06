@@ -329,7 +329,7 @@ function tsCompile(source, options) {
   }
   return ts.transpileModule(source, options).outputText;
 }
-async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = false) {
+async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = false, limitLogs = true) {
   const vm = QuickJS.newContext();
   let errorState = false;
   let lastError = "";
@@ -445,7 +445,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
           result.error.dispose();
           return {
             success: false,
-            logs: logger.getPrettyLogs()
+            logs: limitLogs ? logger.getPrettyLogs() : logger.getLogs()
           };
         } else if ("value" in result) {
           const settled = vm.resolvePromise(result.value);
@@ -459,7 +459,7 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
             logger.error(["Uncaught exception:", err, "\n", lines.join("\n")], "runner");
             return {
               success: false,
-              logs: logger.getPrettyLogs()
+              logs: limitLogs ? logger.getPrettyLogs() : logger.getLogs()
             };
           }
           promiseResult.value.dispose();
@@ -469,13 +469,13 @@ async function createSandbox(QuickJS, requireLookup = {}, globals = {}, debug = 
           }
           return {
             success: !errorState,
-            logs: logger.getPrettyLogs()
+            logs: limitLogs ? logger.getPrettyLogs() : logger.getLogs()
           };
         } else {
           logger.error(["Unknown execution result:", result], "runner");
           return {
             success: false,
-            logs: logger.getPrettyLogs()
+            logs: limitLogs ? logger.getPrettyLogs() : logger.getLogs()
           };
         }
       } catch (e) {
@@ -719,7 +719,7 @@ async function createWithAPI(options) {
           value: apiObject,
           whitelist: apiWhitelist
         }
-      }, options.debug);
+      }, options.debug, options.limitLogs);
       try {
         if (debug) {
           console.log("checking Code:\n", generatedCode);

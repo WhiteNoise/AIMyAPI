@@ -56,6 +56,7 @@ interface AIMyAPIOptions {
     apiGlobalName?: string;
     apiDocsPath?: string;
     debug?: boolean;
+    limitLogs?: boolean;
     model?: string;
     additionalModelOptions?: object;
     hideLogsFromAgent?: boolean;
